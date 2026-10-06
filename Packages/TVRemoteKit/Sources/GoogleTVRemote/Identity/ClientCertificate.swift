@@ -16,6 +16,12 @@ public struct ClientCertificate: Sendable {
     /// Modulus / exponent of the public key, used for the pairing secret.
     public let publicKey: RSAPublicKey
 
+    public init(certificateDER: [UInt8], privateKeyDER: [UInt8], publicKey: RSAPublicKey) {
+        self.certificateDER = certificateDER
+        self.privateKeyDER = privateKeyDER
+        self.publicKey = publicKey
+    }
+
     public static func generate(
         commonName: String = "GoogleTV Watch Remote",
         organization: String = "GoogleTVWatchRemote",

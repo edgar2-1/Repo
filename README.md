@@ -1,11 +1,13 @@
-# TV Remote for Apple Watch
+# TV Remote for iPhone and Apple Watch
 
-A standalone Apple Watch app that controls **Google TV / Android TV, Roku,
-Samsung and LG** televisions directly over Wi‑Fi. No iPhone app, no cloud, no
-accounts: the watch speaks each TV's own local-network protocol, the same ones
-the manufacturers' phone apps use.
+An iPhone app and an Apple Watch app that control **Google TV / Android TV,
+Roku, Samsung and LG** televisions directly over Wi‑Fi. No cloud, no accounts:
+both apps speak each TV's own local-network protocol, the same ones the
+manufacturers' remote apps use. One install covers both devices, and the watch
+also works on its own.
 
-- Works with several TVs; switch between them from the watch
+- Pair once on the phone; TVs, pairings and the Google TV identity sync to the watch
+- Works with several TVs; switch between them on either device
 - D‑pad, OK, Back, Home — tap for a press, hold for a long press where the TV supports it
 - Digital Crown turns the volume up and down
 - Play/pause, rewind, fast‑forward, previous/next, stop, mute
@@ -30,8 +32,11 @@ the manufacturers' phone apps use.
 | Samsung | WebSocket `wss://…:8002/api/v2/channels/samsung.remote.control` (falls back to `ws` 8001) | `ms.remote.control` key clicks, token from `ms.channel.connect`, REST app launch |
 | LG | WebSocket `ws://…:3000` or `wss://…:3001` (SSAP) | `register` with PROMPT pairing, pointer‑input socket for buttons, `ssap://` requests and subscriptions for volume, power and apps |
 
-Everything protocol‑related lives in the `TVRemoteKit` Swift package; the
-watch app is a SwiftUI layer over a single `TVController` protocol.
+Everything protocol‑related lives in the `TVRemoteKit` Swift package. Both
+apps are SwiftUI layers over a single `TVController` protocol and share their
+model code (`Shared/`). WatchConnectivity mirrors the TV list, per‑TV
+credentials and the Google TV client certificate between phone and watch, so
+a TV added on one device is ready on the other.
 
 ```
 Packages/TVRemoteKit/
@@ -43,13 +48,16 @@ Packages/TVRemoteKit/
     SamsungRemote/    Samsung Tizen remote WebSocket
     LGRemote/         LG webOS SSAP
   Tests/              58 unit tests; run on macOS or Linux with `swift test`
-WatchRemote/          the watchOS app (SwiftUI)
+Shared/               store, controller factory, discovery, pairing session,
+                      WatchConnectivity sync, shared SwiftUI pieces
+PhoneRemote/          the iPhone app (SwiftUI)
+WatchRemote/          the Apple Watch app (SwiftUI)
 project.yml           XcodeGen spec that produces the Xcode project
 ```
 
 ## Requirements
 
-- Apple Watch running watchOS 9 or later (Series 4 or newer)
+- iPhone running iOS 16 or later, and/or Apple Watch running watchOS 9 or later
 - Xcode 15 or later, and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
   (`brew install xcodegen`)
 - A free or paid Apple Developer account for signing
@@ -61,17 +69,21 @@ project.yml           XcodeGen spec that produces the Xcode project
 
    ```sh
    xcodegen generate
-   open GoogleTVWatchRemote.xcodeproj
+   open TVRemote.xcodeproj
    ```
 
-2. In the `WatchRemote` target's **Signing & Capabilities** tab pick your
-   team, and change the bundle identifier from `com.example.GoogleTVWatchRemote`
-   to something unique. (Or set `DEVELOPMENT_TEAM` and
-   `PRODUCT_BUNDLE_IDENTIFIER` in `project.yml` and regenerate.)
+2. Pick your team in **Signing & Capabilities** for both targets, and change
+   the bundle identifiers: `PhoneRemote` from `com.example.TVRemote` to
+   something unique, and `WatchRemote` to that same identifier plus
+   `.watchkitapp`. (Or edit `project.yml` and regenerate.)
 
-3. Select your Apple Watch as the run destination and press Run. The first
-   install asks you to trust the developer certificate on the watch
-   (Settings → General → Device Management on the paired iPhone).
+3. Choose the **PhoneRemote** scheme, select your iPhone and press Run. The
+   watch app is embedded and installs alongside (Watch app → General → check
+   *Automatic App Install*, or install it from the My Watch tab). The first
+   install asks you to trust the developer certificate under Settings →
+   General → VPN & Device Management.
+
+To run only the watch app, choose the **WatchRemote** scheme and your watch.
 
 To run the protocol tests without Xcode:
 
@@ -81,6 +93,10 @@ swift test
 ```
 
 ## Adding a TV
+
+Add TVs on whichever device is handy; they appear on the other within a few
+seconds when both are nearby. The phone is the comfortable place to type a
+Google TV code.
 
 1. Open the app. Google TVs appear under **Nearby** by themselves. Tap
    **Scan for Roku, Samsung, LG** to probe the local network for the others

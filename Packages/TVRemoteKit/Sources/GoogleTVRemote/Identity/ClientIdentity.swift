@@ -80,6 +80,35 @@ public final class ClientIdentity: @unchecked Sendable {
         ] as CFDictionary)
     }
 
+    // MARK: Transfer between devices
+
+    /// DER blobs of the certificate and private key, for copying the identity to
+    /// a paired device so both control the same TVs. Treat the key as a secret.
+    public func exportDER() throws -> (certificate: Data, privateKey: Data) {
+        var key: SecKey?
+        guard SecIdentityCopyPrivateKey(identity, &key) == errSecSuccess, let key else {
+            throw ClientIdentityError.keychain(errSecItemNotFound, "private key")
+        }
+        var error: Unmanaged<CFError>?
+        guard let keyData = SecKeyCopyExternalRepresentation(key, &error) as Data? else {
+            throw ClientIdentityError.invalidPrivateKey((error?.takeRetainedValue()).map { String(describing: $0) } ?? "not exportable")
+        }
+        return (SecCertificateCopyData(certificate) as Data, keyData)
+    }
+
+    /// Replaces the stored identity with one exported from another device.
+    @discardableResult
+    public static func install(certificateDER: Data, privateKeyDER: Data) throws -> ClientIdentity {
+        reset()
+        guard let certificate = SecCertificateCreateWithData(nil, certificateDER as CFData) else {
+            throw ClientIdentityError.invalidCertificate
+        }
+        let publicKey = try extractPublicKey(from: certificate)
+        try store(ClientCertificate(certificateDER: Array(certificateDER), privateKeyDER: Array(privateKeyDER), publicKey: publicKey))
+        guard let installed = try load() else { throw ClientIdentityError.identityNotFound }
+        return installed
+    }
+
     // MARK: Internals
 
     private static func storedCertificate() throws -> SecCertificate? {

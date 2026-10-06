@@ -99,7 +99,7 @@ struct ConnectTVView: View {
         controller.disconnect()
 
         state = .done
-        store.haptic(.success)
+        Haptics.play(.success)
         try? await Task.sleep(for: .milliseconds(700))
         store.add(tv, credential: credential)
     }

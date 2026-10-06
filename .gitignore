@@ -12,7 +12,7 @@ build/
 *.dSYM
 
 # XcodeGen output (regenerate with `xcodegen generate`)
-GoogleTVWatchRemote.xcodeproj/
+TVRemote.xcodeproj/
 
 # Swift Package Manager
 .build/

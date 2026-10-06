@@ -89,7 +89,11 @@ struct AddTVView: View {
             if let target {
                 switch target.brand {
                 case .googleTV:
+                    #if os(watchOS)
                     PairingView(session: PairingSession(host: target.host, suggestedName: target.name))
+                    #else
+                    PhonePairingView(session: PairingSession(host: target.host, suggestedName: target.name))
+                    #endif
                 case .roku, .samsung, .lg:
                     ConnectTVView(device: target)
                 }

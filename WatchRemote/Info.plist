@@ -22,7 +22,9 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>WKApplication</key>
 	<true/>
-	<key>WKWatchOnly</key>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>com.example.TVRemote</string>
+	<key>WKRunsIndependentlyOfCompanionApp</key>
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>The remote finds and controls your Google TV over your home Wi‑Fi.</string>

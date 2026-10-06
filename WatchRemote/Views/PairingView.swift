@@ -61,7 +61,7 @@ struct PairingView: View {
         }
         .onChange(of: session.state) { newState in
             if newState == .paired {
-                store.haptic(.success)
+                Haptics.play(.success)
                 Task {
                     try? await Task.sleep(for: .milliseconds(700))
                     store.add(session.savedTV, credential: nil)

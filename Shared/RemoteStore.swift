@@ -2,7 +2,6 @@ import Foundation
 import Combine
 import TVRemoteCore
 import GoogleTVRemote
-import WatchKit
 
 /// App-wide state: saved TVs, the selected TV's live connection and what it reports.
 @MainActor
@@ -42,10 +41,73 @@ final class RemoteStore: ObservableObject {
     private let saved = SavedTVStore()
     private let secrets = SecretStore.shared
 
+    private let sync = TVSync.shared
+    private var lastAppliedSync: Date?
+    private static let lastSyncKey = "tvremote.lastAppliedSync"
+
     init() {
         tvs = saved.tvs
         selected = tvs.first { $0.id == saved.selectedID } ?? tvs.first
         phase = tvs.isEmpty ? .noTVs : .disconnected(nil)
+        lastAppliedSync = UserDefaults.standard.object(forKey: Self.lastSyncKey) as? Date
+        sync.onReceive = { [weak self] payload in self?.apply(payload) }
+        sync.activate()
+    }
+
+    // MARK: Sync with the other device
+
+    /// Publishes TVs, credentials and the Google TV identity to the paired phone/watch.
+    private func pushSync() {
+        var credentials: [String: String] = [:]
+        for tv in tvs {
+            if let credential = secrets.credential(for: tv.id) { credentials[tv.id.uuidString] = credential }
+        }
+        var certificate: Data?
+        var key: Data?
+        if tvs.contains(where: { $0.brand == .googleTV }),
+           let identity = try? ClientIdentity.load(),
+           let exported = try? identity.exportDER() {
+            certificate = exported.certificate
+            key = exported.privateKey
+        }
+        let now = Date()
+        lastAppliedSync = now
+        UserDefaults.standard.set(now, forKey: Self.lastSyncKey)
+        sync.push(SyncPayload(tvs: tvs, credentials: credentials, identityCertificate: certificate,
+                              identityKey: key, updatedAt: now))
+    }
+
+    /// Adopts the other device's state when it is newer than ours.
+    private func apply(_ payload: SyncPayload) {
+        if let last = lastAppliedSync, payload.updatedAt <= last { return }
+        lastAppliedSync = payload.updatedAt
+        UserDefaults.standard.set(payload.updatedAt, forKey: Self.lastSyncKey)
+
+        let currentID = selected?.id
+        disconnect()
+        for tv in tvs where !payload.tvs.contains(where: { $0.id == tv.id }) {
+            secrets.setCredential(nil, for: tv.id)
+        }
+        saved.tvs = payload.tvs
+        for tv in payload.tvs {
+            secrets.setCredential(payload.credentials[tv.id.uuidString], for: tv.id)
+        }
+        if let certificate = payload.identityCertificate, let key = payload.identityKey {
+            let local = try? ClientIdentity.load()?.exportDER()
+            if local?.certificate != certificate {
+                _ = try? ClientIdentity.install(certificateDER: certificate, privateKeyDER: key)
+            }
+        }
+        tvs = saved.tvs
+        selected = tvs.first { $0.id == currentID } ?? tvs.first { $0.id == saved.selectedID } ?? tvs.first
+        saved.selectedID = selected?.id
+        resetTVState()
+        if selected == nil {
+            phase = .noTVs
+        } else {
+            phase = .disconnected(nil)
+            connect()
+        }
     }
 
     // MARK: Identity (Google TV)
@@ -68,6 +130,16 @@ final class RemoteStore: ObservableObject {
         secrets.setCredential(credential, for: tv.id)
         tvs = saved.tvs
         select(tv)
+        pushSync()
+    }
+
+    func rename(_ tv: SavedTV, to name: String) {
+        var updated = tv
+        updated.name = name
+        saved.upsert(updated)
+        tvs = saved.tvs
+        if selected?.id == tv.id { selected = updated }
+        pushSync()
     }
 
     func select(_ tv: SavedTV) {
@@ -91,6 +163,7 @@ final class RemoteStore: ObservableObject {
         } else if tv.id == selected?.id, let next = tvs.first {
             select(next)
         }
+        pushSync()
     }
 
     /// Forgets every TV and the Google TV client certificate.
@@ -104,6 +177,7 @@ final class RemoteStore: ObservableObject {
         phase = .noTVs
         resetTVState()
         ClientIdentity.reset()
+        pushSync()
     }
 
     private func resetTVState() {
@@ -135,8 +209,9 @@ final class RemoteStore: ObservableObject {
                 }
                 try await controller.connect()
                 // A refreshed credential (Samsung re-issues tokens) must be kept.
-                if let credential = controller.credential {
+                if let credential = controller.credential, credential != self.secrets.credential(for: tv.id) {
                     self.secrets.setCredential(credential, for: tv.id)
+                    self.pushSync()
                 }
                 self.reconnectAttempts = 0
                 self.phase = .connected
@@ -199,17 +274,17 @@ final class RemoteStore: ObservableObject {
     // MARK: Commands
 
     func press(_ key: TVKey) {
-        haptic(.click)
+        Haptics.play(.click)
         send(key, .tap)
     }
 
     func hold(_ key: TVKey, began: Bool) {
-        if began { haptic(.start) }
+        if began { Haptics.play(.start) }
         send(key, began ? .holdBegin : .holdEnd)
     }
 
     func launch(_ app: TVApp) {
-        haptic(.click)
+        Haptics.play(.click)
         guard let controller else { return }
         Task {
             do { try await controller.launch(app) } catch { reportFailure(error) }
@@ -238,14 +313,10 @@ final class RemoteStore: ObservableObject {
         case TVControllerError.notConnected:
             connect()
         case TVControllerError.unsupportedKey:
-            haptic(.failure)
+            Haptics.play(.failure)
         default:
             phase = .disconnected(Self.describe(error))
         }
-    }
-
-    func haptic(_ type: WKHapticType) {
-        WKInterfaceDevice.current().play(type)
     }
 
     static func describe(_ error: Error) -> String {

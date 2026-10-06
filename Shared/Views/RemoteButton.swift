@@ -28,7 +28,7 @@ struct RemoteButton<Label: View>: View {
             .opacity(supported ? 1 : 0.3)
             .contentShape(Circle())
             .onTapGesture {
-                guard supported else { store.haptic(.failure); return }
+                guard supported else { Haptics.play(.failure); return }
                 store.press(key)
             }
             .onLongPressGesture(
