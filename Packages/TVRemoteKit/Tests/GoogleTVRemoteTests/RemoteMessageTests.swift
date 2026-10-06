@@ -1,5 +1,5 @@
 import XCTest
-@testable import GoogleTVRemoteKit
+@testable import GoogleTVRemote
 
 final class RemoteMessageTests: XCTestCase {
     func testKeyInjectWireFormat() throws {

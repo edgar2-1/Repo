@@ -1,7 +1,7 @@
 import XCTest
 import X509
 import SwiftASN1
-@testable import GoogleTVRemoteKit
+@testable import GoogleTVRemote
 
 final class ClientCertificateTests: XCTestCase {
     func testGeneratesSelfSignedRSACertificate() throws {
@@ -14,7 +14,7 @@ final class ClientCertificateTests: XCTestCase {
         // The DER parses back as a valid self-signed certificate...
         let certificate = try Certificate(derEncoded: generated.certificateDER)
         XCTAssertEqual(certificate.subject, certificate.issuer)
-        XCTAssertTrue(try certificate.subject.contains { $0.contains { $0.type == .RDNAttributeType.commonName } })
+        XCTAssertTrue(certificate.subject.contains { $0.contains { $0.type == .RDNAttributeType.commonName } })
         XCTAssertTrue(certificate.notValidBefore < Date())
         XCTAssertTrue(certificate.notValidAfter > Date().addingTimeInterval(365 * 24 * 3600))
 

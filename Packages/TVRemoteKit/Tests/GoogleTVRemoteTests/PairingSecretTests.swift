@@ -1,5 +1,5 @@
 import XCTest
-@testable import GoogleTVRemoteKit
+@testable import GoogleTVRemote
 
 final class PairingSecretTests: XCTestCase {
     // Reference vector computed independently with Python's hashlib:

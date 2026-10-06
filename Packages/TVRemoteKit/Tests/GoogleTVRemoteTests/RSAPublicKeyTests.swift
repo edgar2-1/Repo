@@ -1,5 +1,5 @@
 import XCTest
-@testable import GoogleTVRemoteKit
+@testable import GoogleTVRemote
 
 final class RSAPublicKeyTests: XCTestCase {
     // Same 2048-bit key exported by OpenSSL in both encodings.

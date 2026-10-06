@@ -1,5 +1,5 @@
 import XCTest
-@testable import GoogleTVRemoteKit
+@testable import GoogleTVRemote
 
 final class PairingMessageTests: XCTestCase {
     func testRequestWireFormat() throws {
