@@ -1,13 +1,12 @@
 import SwiftUI
-import GoogleTVRemoteKit
+import TVRemoteCore
 
-/// A remote key. Tap sends a short press; press-and-hold sends the Android
-/// long-press pair (START_LONG on hold, END_LONG on release), which is what
-/// makes e.g. holding Home open the app switcher or holding a D-pad arrow scroll.
+/// A remote key. Tap sends a press; press-and-hold sends hold begin/end on
+/// platforms that support it. Keys the current TV can't do are dimmed.
 struct RemoteButton<Label: View>: View {
     @EnvironmentObject private var store: RemoteStore
 
-    let key: KeyCode
+    let key: TVKey
     var size: CGFloat = 44
     var tint: Color = .gray.opacity(0.3)
     var allowsHold = true
@@ -16,6 +15,9 @@ struct RemoteButton<Label: View>: View {
     @State private var isPressed = false
     @State private var holding = false
 
+    private var supported: Bool { store.supportedKeys.contains(key) }
+    private var canHold: Bool { allowsHold && store.supportsHold }
+
     var body: some View {
         label()
             .font(.system(size: size * 0.42, weight: .semibold))
@@ -23,32 +25,37 @@ struct RemoteButton<Label: View>: View {
             .background(Circle().fill(tint))
             .scaleEffect(isPressed ? 0.9 : 1)
             .animation(.easeOut(duration: 0.08), value: isPressed)
+            .opacity(supported ? 1 : 0.3)
             .contentShape(Circle())
-            .onTapGesture { store.press(key) }
+            .onTapGesture {
+                guard supported else { store.haptic(.failure); return }
+                store.press(key)
+            }
             .onLongPressGesture(
                 minimumDuration: 0.45,
                 pressing: { pressing in
                     isPressed = pressing
                     if !pressing, holding {
                         holding = false
-                        store.hold(key, .endLong)
+                        store.hold(key, began: false)
                     }
                 },
                 perform: {
-                    guard allowsHold else {
+                    guard supported else { return }
+                    guard canHold else {
                         store.press(key)
                         return
                     }
                     holding = true
-                    store.hold(key, .startLong)
+                    store.hold(key, began: true)
                 }
             )
-            .accessibilityLabel(Text(String(describing: key)))
+            .accessibilityLabel(Text(key.rawValue))
     }
 }
 
 extension RemoteButton where Label == Image {
-    init(_ key: KeyCode, systemImage: String, size: CGFloat = 44, tint: Color = .gray.opacity(0.3), allowsHold: Bool = true) {
+    init(_ key: TVKey, systemImage: String, size: CGFloat = 44, tint: Color = .gray.opacity(0.3), allowsHold: Bool = true) {
         self.init(key: key, size: size, tint: tint, allowsHold: allowsHold) {
             Image(systemName: systemImage)
         }
@@ -56,7 +63,7 @@ extension RemoteButton where Label == Image {
 }
 
 extension RemoteButton where Label == Text {
-    init(_ key: KeyCode, title: String, size: CGFloat = 44, tint: Color = .gray.opacity(0.3), allowsHold: Bool = true) {
+    init(_ key: TVKey, title: String, size: CGFloat = 44, tint: Color = .gray.opacity(0.3), allowsHold: Bool = true) {
         self.init(key: key, size: size, tint: tint, allowsHold: allowsHold) {
             Text(title)
         }

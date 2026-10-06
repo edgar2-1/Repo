@@ -1,52 +1,50 @@
-# Google TV Remote for Apple Watch
+# TV Remote for Apple Watch
 
-A standalone Apple Watch app that controls a Google TV (Chromecast with
-Google TV, or any Android TV 11+ device) directly over Wi‑Fi. No iPhone app,
-no cloud, no Google account: the watch speaks the same local protocol the
-official Google TV remote app uses.
+A standalone Apple Watch app that controls **Google TV / Android TV, Roku,
+Samsung and LG** televisions directly over Wi‑Fi. No iPhone app, no cloud, no
+accounts: the watch speaks each TV's own local-network protocol, the same ones
+the manufacturers' phone apps use.
 
-- D‑pad, OK, Back, Home — tap for a press, hold for a long press
-- Digital Crown turns the volume up and down; the TV's volume level is shown
+- Works with several TVs; switch between them from the watch
+- D‑pad, OK, Back, Home — tap for a press, hold for a long press where the TV supports it
+- Digital Crown turns the volume up and down
 - Play/pause, rewind, fast‑forward, previous/next, stop, mute
-- Power, input, Assistant, settings, and one‑tap app launching
-  (YouTube, Netflix, Prime Video, Disney+, YouTube TV, Spotify, Plex)
-- Finds the TV with Bonjour, pairs with the 6‑character on‑screen code,
-  reconnects automatically
+- Power, input, settings and one‑tap app launching (the TV's own app list on Roku and LG)
+- Finds TVs on the network, pairs the way each brand expects, reconnects automatically
+
+## Supported TVs
+
+| Brand | Models | Pairing | Notes |
+| ----- | ------ | ------- | ----- |
+| Google TV / Android TV | Chromecast with Google TV, Android TV 11+ (Sony, TCL, Hisense, Nvidia Shield…) | Type the 6‑character code the TV shows | Long press, volume level, app deep links |
+| Roku | Any Roku player or Roku TV | None | Power/volume/input only on Roku TVs; app list from the device |
+| Samsung | Tizen TVs, 2016 and newer | Tap **Allow** on the TV | Token stored in the keychain; power‑on via Wake‑on‑LAN when the TV allows it |
+| LG | webOS TVs, 2014 and newer | Tap **Allow** on the TV | Client key stored in the keychain; power‑on via Wake‑on‑LAN when enabled on the TV |
 
 ## How it works
 
-Google TV exposes two TLS services on the LAN:
+| Brand | Transport | What the code does |
+| ----- | --------- | ------------------ |
+| Google TV | TLS on ports 6467 (pairing) and 6466 (remote), protobuf with varint framing | Generates an RSA client certificate, completes the Polo pairing handshake (secret = SHA‑256 over both public keys and the code nonce), then injects Android key events |
+| Roku | HTTP on port 8060 (ECP) | `keypress`/`keydown`/`keyup`, `query/device-info`, `query/apps`, `launch` |
+| Samsung | WebSocket `wss://…:8002/api/v2/channels/samsung.remote.control` (falls back to `ws` 8001) | `ms.remote.control` key clicks, token from `ms.channel.connect`, REST app launch |
+| LG | WebSocket `ws://…:3000` or `wss://…:3001` (SSAP) | `register` with PROMPT pairing, pointer‑input socket for buttons, `ssap://` requests and subscriptions for volume, power and apps |
 
-| Port | Protocol | Purpose |
-| ---- | -------- | ------- |
-| 6467 | Pairing ("Polo") v2 | One‑time pairing: the TV shows a code, the remote proves it saw it |
-| 6466 | Android TV Remote v2 | Key injection, volume reports, app links, keep‑alive pings |
-
-Both use protobuf messages with a varint length prefix. The remote is
-identified by its TLS client certificate: on first launch the watch generates
-a 2048‑bit RSA key and a self‑signed certificate and stores them in the
-keychain. Pairing binds that certificate to the TV; the secret sent to the TV
-is `SHA‑256(client modulus ‖ client exponent ‖ TV modulus ‖ TV exponent ‖ nonce)`
-where the nonce is the last four hex digits of the on‑screen code and the first
-two digits are a check byte. After that the TV accepts the certificate on port
-6466 without further prompts.
-
-Everything protocol‑related lives in the `GoogleTVRemoteKit` Swift package;
-the watch app is a thin SwiftUI layer on top.
+Everything protocol‑related lives in the `TVRemoteKit` Swift package; the
+watch app is a SwiftUI layer over a single `TVController` protocol.
 
 ```
-Packages/GoogleTVRemoteKit/
-  Sources/GoogleTVRemoteKit/
-    Protobuf/     hand‑rolled protobuf writer/reader (no runtime dependency)
-    Protocol/     RemoteMessage, PairingMessage, KeyCode, varint framing
-    Pairing/      PairingSecret (pure), PairingClient (network)
-    Remote/       RemoteClient — handshake, pings, key injection, events
-    Transport/    TLSConnection — Network.framework with client identity
-    Identity/     certificate generation, keychain‑backed SecIdentity, RSA DER parsing
-    Discovery/    TVBrowser — Bonjour `_androidtvremote2._tcp` + host resolution
-  Tests/          33 unit tests; run on macOS or Linux with `swift test`
-WatchRemote/      the watchOS app (SwiftUI)
-project.yml       XcodeGen spec that produces the Xcode project
+Packages/TVRemoteKit/
+  Sources/
+    TVRemoteCore/     TVController protocol, universal keys, saved TVs, keychain
+                      secrets, SSDP + subnet-scan discovery, HTTP/WebSocket clients
+    GoogleTVRemote/   Android TV Remote v2 + Polo pairing, certificate identity
+    RokuRemote/       Roku ECP
+    SamsungRemote/    Samsung Tizen remote WebSocket
+    LGRemote/         LG webOS SSAP
+  Tests/              58 unit tests; run on macOS or Linux with `swift test`
+WatchRemote/          the watchOS app (SwiftUI)
+project.yml           XcodeGen spec that produces the Xcode project
 ```
 
 ## Requirements
@@ -78,46 +76,58 @@ project.yml       XcodeGen spec that produces the Xcode project
 To run the protocol tests without Xcode:
 
 ```sh
-cd Packages/GoogleTVRemoteKit
+cd Packages/TVRemoteKit
 swift test
 ```
 
-## Pairing
+## Adding a TV
 
-1. Open the app. TVs on the network appear under **Nearby**; tap yours. If
-   nothing shows up, type the TV's IP address (Google TV: Settings → System →
-   About → Status) and tap **Pair**.
-2. The TV shows a 6‑character code. Type it on the watch's keypad. A wrong code
-   simply clears the field so you can retype it.
-3. Done. The remote screen appears and connects automatically from now on.
-
-**Forget TV** in the last page removes the saved TV. **Forget & reset remote
-identity** additionally generates a new certificate, so the TV sees the watch
-as a brand‑new remote on the next pairing.
+1. Open the app. Google TVs appear under **Nearby** by themselves. Tap
+   **Scan for Roku, Samsung, LG** to probe the local network for the others
+   (takes up to a minute). Or pick the brand, type the TV's IP address and tap
+   **Add**.
+2. Follow the brand's pairing step:
+   - **Google TV**: type the 6‑character code the TV shows. A wrong code clears
+     the field so you can retype it.
+   - **Samsung / LG**: a prompt appears on the TV; choose **Allow**.
+   - **Roku**: nothing to do.
+3. The remote screen appears. Add more TVs and switch between them from the
+   last page.
 
 ## Troubleshooting
 
-- **No TVs found.** Bonjour discovery needs the watch to be on Wi‑Fi itself.
-  When the watch relays traffic through a nearby iPhone over Bluetooth,
-  multicast discovery may not work, but a direct connection does, so enter the
-  IP manually.
-- **"TV didn't answer. Is it paired?"** The TV dropped the connection during
-  the handshake. This usually means the TV no longer trusts the certificate
-  (for example after a TV factory reset). Forget the TV and pair again.
-- **"No route to TV."** The watch has no path to that address. Check Wi‑Fi on
-  the watch and that the TV's IP hasn't changed; re‑pairing with the newly
-  discovered address fixes a changed IP.
-- **Volume keys do nothing.** On TVs with HDMI‑CEC, volume keys go to the
-  connected sound system; make sure CEC is enabled on both devices.
+- **Scan finds nothing.** The watch must be on the same Wi‑Fi network as the TV.
+  When the watch relays through a nearby iPhone over Bluetooth, local
+  discovery can fail while direct connections still work, so enter the IP
+  manually. Find it on the TV: Google TV Settings → System → About → Status;
+  Roku Settings → Network → About; Samsung Settings → General → Network →
+  Network Status → IP Settings; LG Settings → Network → Wi‑Fi Connection →
+  Advanced.
+- **"The TV didn't allow this remote."** Samsung or LG declined, or the TV's
+  stored permission was removed (Samsung: Settings → General → External Device
+  Manager → Device Connection Manager; LG: Settings → Connection → Mobile
+  Connection Management). Forget the TV in the app and add it again.
+- **"TV didn't answer. Is it paired?"** on Google TV usually means the TV no
+  longer trusts the watch's certificate, for example after a factory reset.
+  Forget the TV and pair again.
+- **Power on doesn't work.** Roku players and Google TV wake over the network
+  by themselves. Samsung needs *Power On with Mobile* and LG needs *Turn on via
+  Wi‑Fi* enabled on the TV, and both are best‑effort from a watch.
+- **Volume keys do nothing.** With HDMI‑CEC, volume may go to a sound bar;
+  make sure CEC is enabled on both devices. Roku sticks and boxes have no volume
+  control at all; only Roku TVs do.
 
 ## Limitations
 
-- Voice search streams audio over a separate channel that is not implemented;
-  the mic button opens Assistant on the TV so you can use the TV's own mic if
-  it has one.
-- Text entry (the TV's on‑screen keyboard) is not implemented.
-- The app trusts the TV's self‑signed certificate on every connection. Pairing
-  is what proves both sides saw the same code; there is no additional pinning.
+- Voice search and text entry are not implemented on any platform.
+- SSDP discovery needs Apple's multicast entitlement
+  (`com.apple.developer.networking.multicast`). Without it the app relies on
+  the subnet scan and manual entry, which work fine.
+- Samsung TVs before 2016 (H/J series) and LG TVs before webOS 2 use different
+  protocols and are not supported.
+- The app trusts each TV's self‑signed certificate on every connection. The
+  per‑brand pairing step is what proves both sides agreed; there is no extra
+  pinning.
 
 ## License
 

@@ -6,9 +6,9 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if store.pairedTV == nil {
+            if store.tvs.isEmpty {
                 NavigationStack {
-                    SetupView()
+                    AddTVView()
                 }
             } else {
                 RemoteTabView()

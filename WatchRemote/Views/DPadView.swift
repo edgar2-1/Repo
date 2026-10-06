@@ -1,5 +1,5 @@
 import SwiftUI
-import GoogleTVRemoteKit
+import TVRemoteCore
 
 /// Navigation pad. The Digital Crown adjusts volume.
 struct DPadView: View {
@@ -12,15 +12,15 @@ struct DPadView: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            RemoteButton(.dpadUp, systemImage: "chevron.up", size: arrow)
+            RemoteButton(.up, systemImage: "chevron.up", size: arrow)
             HStack(spacing: 10) {
-                RemoteButton(.dpadLeft, systemImage: "chevron.left", size: arrow)
-                RemoteButton(key: .dpadCenter, size: center, tint: .accentColor.opacity(0.85)) {
+                RemoteButton(.left, systemImage: "chevron.left", size: arrow)
+                RemoteButton(key: .select, size: center, tint: .accentColor.opacity(0.85)) {
                     Text("OK")
                 }
-                RemoteButton(.dpadRight, systemImage: "chevron.right", size: arrow)
+                RemoteButton(.right, systemImage: "chevron.right", size: arrow)
             }
-            RemoteButton(.dpadDown, systemImage: "chevron.down", size: arrow)
+            RemoteButton(.down, systemImage: "chevron.down", size: arrow)
 
             HStack(spacing: 18) {
                 RemoteButton(.back, systemImage: "arrow.uturn.backward", size: 36)
@@ -42,7 +42,7 @@ struct DPadView: View {
         .onChange(of: crown) { newValue in
             let step = Int(newValue.rounded())
             guard step != lastCrownStep else { return }
-            let direction: KeyCode = step > lastCrownStep ? .volumeUp : .volumeDown
+            let direction: TVKey = step > lastCrownStep ? .volumeUp : .volumeDown
             lastCrownStep = step
             store.press(direction)
         }
@@ -55,7 +55,7 @@ struct DPadView: View {
 }
 
 private struct VolumeStrip: View {
-    let volume: VolumeState
+    let volume: RemoteStore.VolumeInfo
 
     var body: some View {
         HStack(spacing: 4) {

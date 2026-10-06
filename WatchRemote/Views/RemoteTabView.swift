@@ -9,25 +9,27 @@ struct RemoteTabView: View {
         TabView(selection: $selection) {
             DPadView().tag(0)
             MediaView().tag(1)
-            MoreView().tag(2)
+            NavigationStack { MoreView() }.tag(2)
         }
         .tabViewStyle(.page)
         .overlay(alignment: .top) {
-            ConnectionBadge()
+            if selection != 2 { ConnectionBadge() }
         }
     }
 }
 
-/// Small status pill: connecting / connected / error, tap to retry.
+/// Small status pill: connecting / waiting for TV / error, tap to retry.
 struct ConnectionBadge: View {
     @EnvironmentObject private var store: RemoteStore
 
     var body: some View {
         switch store.phase {
-        case .connected, .unpaired:
+        case .connected, .noTVs:
             EmptyView()
         case .connecting:
             pill("Connecting…", color: .yellow)
+        case .pairingPrompt:
+            pill("Allow on your TV", color: .orange)
         case .disconnected(let reason):
             Button { store.connect() } label: {
                 pill(reason ?? "Disconnected · tap to retry", color: .red)

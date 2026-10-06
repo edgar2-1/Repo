@@ -1,8 +1,9 @@
 import Foundation
 import Combine
-import GoogleTVRemoteKit
+import TVRemoteCore
+import GoogleTVRemote
 
-/// Drives one pairing attempt with a TV.
+/// Drives one Google TV pairing attempt (6-character on-screen code).
 @MainActor
 final class PairingSession: ObservableObject {
     enum State: Equatable {
@@ -29,9 +30,9 @@ final class PairingSession: ObservableObject {
         self.tvName = suggestedName
     }
 
-    var pairedTV: PairedTV { PairedTV(name: tvName, host: host) }
+    var savedTV: SavedTV { SavedTV(brand: .googleTV, name: tvName, host: host) }
 
-    func start(identity: () throws -> ClientIdentity) async {
+    func start(identity: @MainActor () throws -> ClientIdentity) async {
         guard state == .idle || isFailed else { return }
         state = .connecting
         code = ""

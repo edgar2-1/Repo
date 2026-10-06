@@ -3,7 +3,11 @@
 #     brew install xcodegen
 #     xcodegen generate
 #
-# then open GoogleTVWatchRemote.xcodeproj. Set DEVELOPMENT_TEAM below (or in
+# then open GoogleTVWatchRemote.xcodeproj.
+#
+# Optional: SSDP discovery of Roku/Samsung/LG needs the multicast entitlement
+# (com.apple.developer.networking.multicast), which Apple grants on request.
+# Without it the app falls back to a subnet scan and manual IP entry. Set DEVELOPMENT_TEAM below (or in
 # Xcode's Signing & Capabilities tab) before building to a real watch.
 name: GoogleTVWatchRemote
 
@@ -25,8 +29,8 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
 
 packages:
-  GoogleTVRemoteKit:
-    path: Packages/GoogleTVRemoteKit
+  TVRemoteKit:
+    path: Packages/TVRemoteKit
 
 targets:
   WatchRemote:
@@ -37,7 +41,16 @@ targets:
     sources:
       - path: WatchRemote
     dependencies:
-      - package: GoogleTVRemoteKit
+      - package: TVRemoteKit
+        product: TVRemoteCore
+      - package: TVRemoteKit
+        product: GoogleTVRemote
+      - package: TVRemoteKit
+        product: RokuRemote
+      - package: TVRemoteKit
+        product: SamsungRemote
+      - package: TVRemoteKit
+        product: LGRemote
     info:
       path: WatchRemote/Info.plist
     settings:

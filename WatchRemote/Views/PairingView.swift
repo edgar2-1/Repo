@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shows pairing progress and collects the 6-character code the TV displays.
+/// Google TV pairing: shows progress and collects the 6-character on-screen code.
 struct PairingView: View {
     @EnvironmentObject private var store: RemoteStore
     @StateObject var session: PairingSession
@@ -33,7 +33,7 @@ struct PairingView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.largeTitle)
                         .foregroundStyle(.green)
-                    Text("Paired with \(session.pairedTV.name)")
+                    Text("Paired with \(session.savedTV.name)")
                         .font(.footnote)
                         .multilineTextAlignment(.center)
 
@@ -62,10 +62,9 @@ struct PairingView: View {
         .onChange(of: session.state) { newState in
             if newState == .paired {
                 store.haptic(.success)
-                // Give the checkmark a beat, then hand over to the remote UI.
                 Task {
                     try? await Task.sleep(for: .milliseconds(700))
-                    store.didPair(with: session.pairedTV)
+                    store.add(session.savedTV, credential: nil)
                 }
             }
         }

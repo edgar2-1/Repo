@@ -1,5 +1,5 @@
 import SwiftUI
-import GoogleTVRemoteKit
+import TVRemoteCore
 
 /// Playback controls.
 struct MediaView: View {
@@ -8,18 +8,18 @@ struct MediaView: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
-                RemoteButton(.mediaRewind, systemImage: "gobackward.10", size: 40)
-                RemoteButton(.mediaPlayPause, systemImage: "playpause.fill", size: 52, tint: .accentColor.opacity(0.85), allowsHold: false)
-                RemoteButton(.mediaFastForward, systemImage: "goforward.10", size: 40)
+                RemoteButton(.rewind, systemImage: "gobackward.10", size: 40)
+                RemoteButton(.playPause, systemImage: "playpause.fill", size: 52, tint: .accentColor.opacity(0.85), allowsHold: false)
+                RemoteButton(.fastForward, systemImage: "goforward.10", size: 40)
             }
             HStack(spacing: 10) {
-                RemoteButton(.mediaPrevious, systemImage: "backward.end.fill", size: 36)
-                RemoteButton(.mediaStop, systemImage: "stop.fill", size: 36, allowsHold: false)
-                RemoteButton(.mediaNext, systemImage: "forward.end.fill", size: 36)
+                RemoteButton(.previous, systemImage: "backward.end.fill", size: 36)
+                RemoteButton(.stop, systemImage: "stop.fill", size: 36, allowsHold: false)
+                RemoteButton(.next, systemImage: "forward.end.fill", size: 36)
             }
             HStack(spacing: 10) {
                 RemoteButton(.volumeDown, systemImage: "speaker.minus.fill", size: 36)
-                RemoteButton(.volumeMute, systemImage: "speaker.slash.fill", size: 36, allowsHold: false)
+                RemoteButton(.mute, systemImage: "speaker.slash.fill", size: 36, allowsHold: false)
                 RemoteButton(.volumeUp, systemImage: "speaker.plus.fill", size: 36)
             }
             if let app = store.currentApp {
@@ -32,12 +32,16 @@ struct MediaView: View {
         .padding(.top, 10)
     }
 
-    private func friendlyName(for package: String) -> String {
-        if let shortcut = AppShortcut.all.first(where: { shortcut in
-            shortcut.packageHint.map { package.contains($0) } ?? false
-        }) {
-            return shortcut.name
-        }
-        return package.split(separator: ".").last.map { String($0).capitalized } ?? package
+    /// Google TV reports Android package names; turn `com.netflix.ninja` into "Netflix".
+    private func friendlyName(for identifier: String) -> String {
+        guard identifier.contains(".") else { return identifier }
+        let known: [(String, String)] = [
+            ("netflix", "Netflix"), ("youtube.tvunplugged", "YouTube TV"), ("youtube", "YouTube"),
+            ("amazon", "Prime Video"), ("disney", "Disney+"), ("spotify", "Spotify"), ("plex", "Plex"),
+            ("hulu", "Hulu"), ("hbo", "Max"), ("apple", "Apple TV"),
+        ]
+        let lower = identifier.lowercased()
+        if let match = known.first(where: { lower.contains($0.0) }) { return match.1 }
+        return identifier.split(separator: ".").last.map { String($0).capitalized } ?? identifier
     }
 }
