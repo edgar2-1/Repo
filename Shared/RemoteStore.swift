@@ -318,7 +318,7 @@ final class RemoteStore: ObservableObject {
             } catch {
                 self.controller?.disconnect()
                 self.controller = nil
-                self.phase = .disconnected(Self.describe(error))
+                self.phase = .disconnected(ErrorText.describe(error))
                 if case TVControllerError.notAuthorized = error { return }
                 self.scheduleReconnect()
             }
@@ -451,7 +451,7 @@ final class RemoteStore: ObservableObject {
         case TVControllerError.unsupportedKey:
             Haptics.play(.failure)
         default:
-            phase = .disconnected(Self.describe(error))
+            phase = .disconnected(ErrorText.describe(error))
         }
     }
 
