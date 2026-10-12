@@ -12,16 +12,18 @@ also works on its own.
 - Digital Crown turns the volume up and down
 - Play/pause, rewind, fast‑forward, previous/next, stop, mute
 - Power, input, settings and one‑tap app launching (the TV's own app list on Roku and LG)
+- Keyboard: type into search boxes and logins on the TV from the phone or by dictation on the watch
+- Watch face complication that opens the remote and shows the selected TV
 - Finds TVs on the network, pairs the way each brand expects, reconnects automatically
 
 ## Supported TVs
 
 | Brand | Models | Pairing | Notes |
 | ----- | ------ | ------- | ----- |
-| Google TV / Android TV | Chromecast with Google TV, Android TV 11+ (Sony, TCL, Hisense, Nvidia Shield…) | Type the 6‑character code the TV shows | Long press, volume level, app deep links |
-| Roku | Any Roku player or Roku TV | None | Power/volume/input only on Roku TVs; app list from the device |
-| Samsung | Tizen TVs, 2016 and newer | Tap **Allow** on the TV | Token stored in the keychain; power‑on via Wake‑on‑LAN when the TV allows it |
-| LG | webOS TVs, 2014 and newer | Tap **Allow** on the TV | Client key stored in the keychain; power‑on via Wake‑on‑LAN when enabled on the TV |
+| Google TV / Android TV | Chromecast with Google TV, Android TV 11+ (Sony, TCL, Hisense, Nvidia Shield…) | Type the 6‑character code the TV shows | Long press, volume level, app deep links, text entry |
+| Roku | Any Roku player or Roku TV | None | Power/volume/input only on Roku TVs; app list from the device; text entry |
+| Samsung | Tizen TVs, 2016 and newer | Tap **Allow** on the TV | Token stored in the keychain; power‑on via Wake‑on‑LAN when the TV allows it; text entry (no remote backspace) |
+| LG | webOS TVs, 2014 and newer | Tap **Allow** on the TV | Client key stored in the keychain; power‑on via Wake‑on‑LAN when enabled on the TV; text entry |
 
 ## How it works
 
@@ -47,11 +49,12 @@ Packages/TVRemoteKit/
     RokuRemote/       Roku ECP
     SamsungRemote/    Samsung Tizen remote WebSocket
     LGRemote/         LG webOS SSAP
-  Tests/              58 unit tests; run on macOS or Linux with `swift test`
+  Tests/              64 unit tests; run on macOS or Linux with `swift test`
 Shared/               store, controller factory, discovery, pairing session,
                       WatchConnectivity sync, shared SwiftUI pieces
 PhoneRemote/          the iPhone app (SwiftUI)
 WatchRemote/          the Apple Watch app (SwiftUI)
+WatchComplication/    watch face complication (WidgetKit)
 project.yml           XcodeGen spec that produces the Xcode project
 ```
 
@@ -72,10 +75,13 @@ project.yml           XcodeGen spec that produces the Xcode project
    open TVRemote.xcodeproj
    ```
 
-2. Pick your team in **Signing & Capabilities** for both targets, and change
-   the bundle identifiers: `PhoneRemote` from `com.example.TVRemote` to
-   something unique, and `WatchRemote` to that same identifier plus
-   `.watchkitapp`. (Or edit `project.yml` and regenerate.)
+2. Pick your team in **Signing & Capabilities** for all three targets, and
+   change the identifiers: `PhoneRemote` from `com.example.TVRemote` to
+   something unique, `WatchRemote` to that plus `.watchkitapp`, and
+   `WatchComplication` to that plus `.watchkitapp.complication`. Also set
+   the App Group on the watch app and complication to `group.` plus your
+   phone identifier. The simplest way is to edit `project.yml` (bundle ids
+   and `APP_GROUP_ID`) and run `xcodegen generate` again.
 
 3. Choose the **PhoneRemote** scheme, select your iPhone and press Run. The
    watch app is embedded and installs alongside (Watch app → General → check
@@ -109,6 +115,18 @@ Google TV code.
    - **Roku**: nothing to do.
 3. The remote screen appears. Add more TVs and switch between them from the
    last page.
+
+## Keyboard and complication
+
+- **Keyboard.** Select a text field on the TV first (a search box, a login
+  form), then tap the keyboard button on the phone or **Keyboard** on the
+  watch's last page. Type, then **Send**; the return key submits. Samsung TVs
+  accept text but have no remote backspace, so use the TV's own keyboard to
+  correct mistakes there.
+- **Complication.** Long‑press the watch face, tap a complication slot and
+  choose **TV Remote**. It shows the selected TV and whether it is on, and
+  tapping it opens the remote. It is available in circular, corner,
+  rectangular and inline styles.
 
 ## Troubleshooting
 

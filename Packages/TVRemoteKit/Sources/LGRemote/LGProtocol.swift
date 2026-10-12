@@ -36,6 +36,9 @@ public enum LGProtocol {
         public static let foregroundApp = "ssap://com.webos.applicationManager/getForegroundAppInfo"
         public static let powerState = "ssap://com.webos.service.tvpower/power/getPowerState"
         public static let showInputPicker = "ssap://com.webos.surfacemanager/showInputPicker"
+        public static let insertText = "ssap://com.webos.service.ime/insertText"
+        public static let deleteCharacters = "ssap://com.webos.service.ime/deleteCharacters"
+        public static let sendEnter = "ssap://com.webos.service.ime/sendEnterKey"
     }
 
     public static func socketURL(host: String, secure: Bool) -> URL {

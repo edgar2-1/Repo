@@ -14,6 +14,10 @@ struct RootView: View {
                 RemoteTabView()
             }
         }
+        .onOpenURL { _ in
+            // Launched from the watch face complication: make sure we're connected.
+            store.connect()
+        }
         .onChange(of: scenePhase) { newPhase in
             switch newPhase {
             case .active:

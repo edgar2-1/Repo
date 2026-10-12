@@ -52,3 +52,20 @@ final class SamsungTests: XCTestCase {
         XCTAssertEqual(SamsungProtocol.keyMap[.back], "KEY_RETURN")
     }
 }
+
+final class SamsungTextTests: XCTestCase {
+    func testTextMessages() throws {
+        let text = SamsungProtocol.encode(SamsungProtocol.textMessage("Hi there"))
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
+        let params = try XCTUnwrap(object["params"] as? [String: String])
+        XCTAssertEqual(params["TypeOfRemote"], "SendInputString")
+        XCTAssertEqual(params["DataOfCmd"], "base64")
+        XCTAssertEqual(params["Cmd"], "SGkgdGhlcmU=")
+
+        let end = SamsungProtocol.encode(SamsungProtocol.textEndMessage())
+        XCTAssertEqual(end, #"{"method":"ms.remote.control","params":{"TypeOfRemote":"SendInputEnd"}}"#)
+
+        let broadcast = SamsungProtocol.encode(SamsungProtocol.textReceivedMessage())
+        XCTAssertTrue(broadcast.contains("custom.remote.textReceived"))
+    }
+}

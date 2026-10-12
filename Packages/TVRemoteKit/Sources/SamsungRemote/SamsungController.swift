@@ -26,6 +26,7 @@ public final class SamsungController: TVController, @unchecked Sendable {
     private var readTask: Task<Void, Never>?
     private var connected = false
     private var connectContinuation: CheckedContinuation<Void, Error>?
+    private var textSessionStarted = false
 
     public init(host: String, token: String?, clientName: String = "Apple Watch", macAddress: String? = nil, http: HTTPClient = .insecure) {
         var continuation: AsyncStream<TVEvent>.Continuation!
@@ -122,6 +123,25 @@ public final class SamsungController: TVController, @unchecked Sendable {
         case .holdEnd: command = "Release"
         }
         try await socket.send(text: SamsungProtocol.encode(SamsungProtocol.keyMessage(name, command: command)))
+    }
+
+    /// Tizen inserts text but has no remote backspace; the TV's own keyboard handles that.
+    public var textEntry: TextEntryFeatures { [.insert, .submit] }
+
+    public func sendText(_ text: String) async throws {
+        guard connected, let socket else { throw TVControllerError.notConnected }
+        guard !text.isEmpty else { return }
+        if !textSessionStarted {
+            try await socket.send(text: SamsungProtocol.encode(SamsungProtocol.textReceivedMessage()))
+            textSessionStarted = true
+        }
+        try await socket.send(text: SamsungProtocol.encode(SamsungProtocol.textMessage(text)))
+    }
+
+    public func submitText() async throws {
+        guard connected, let socket else { throw TVControllerError.notConnected }
+        try await socket.send(text: SamsungProtocol.encode(SamsungProtocol.textEndMessage()))
+        textSessionStarted = false
     }
 
     public func availableApps() async throws -> [TVApp] { SamsungProtocol.apps }

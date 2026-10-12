@@ -21,3 +21,7 @@ Package.resolved
 
 # macOS
 .DS_Store
+
+# XcodeGen writes these from project.yml
+WatchRemote/WatchRemote.entitlements
+WatchComplication/WatchComplication.entitlements

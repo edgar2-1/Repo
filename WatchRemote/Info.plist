@@ -26,6 +26,19 @@
 	<string>com.example.TVRemote</string>
 	<key>WKRunsIndependentlyOfCompanionApp</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tvremote</string>
+			</array>
+		</dict>
+	</array>
+	<key>TVRemoteAppGroup</key>
+	<string>$(APP_GROUP_ID)</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>The remote finds and controls your Google TV over your home Wi‑Fi.</string>
 	<key>NSBonjourServices</key>

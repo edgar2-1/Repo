@@ -41,6 +41,27 @@ public struct VolumeState: Equatable, Sendable {
     }
 }
 
+/// One edit inside `RemoteImeBatchEdit`: insert `value` at the given selection.
+public struct ImeEdit: Equatable, Sendable {
+    public var insert: Int32
+    public var start: Int32
+    public var end: Int32
+    public var value: String
+
+    public init(insert: Int32 = 1, start: Int32, end: Int32, value: String) {
+        self.insert = insert
+        self.start = start
+        self.end = end
+        self.value = value
+    }
+
+    /// The edit the official remote sends to type `text`: selection at the end of it.
+    public static func typing(_ text: String) -> ImeEdit {
+        let position = Int32(max(text.count - 1, 0))
+        return ImeEdit(insert: 1, start: position, end: position, value: text)
+    }
+}
+
 /// Messages of the Android TV Remote protocol v2 (TCP/TLS port 6466).
 ///
 /// Only the subset needed for a remote control is modelled; everything else
@@ -54,6 +75,9 @@ public enum RemoteMessage: Equatable, Sendable {
     case keyInject(KeyCode, KeyDirection)
     /// The TV tells us which app currently has an input field (we only keep the package).
     case imeKeyInject(appPackage: String)
+    /// Text-field edits. The TV sends one with the current counters whenever a
+    /// field gains focus; we echo those counters back when typing.
+    case imeBatchEdit(imeCounter: Int32, fieldCounter: Int32, edits: [ImeEdit])
     case imeShowRequest
     case start(Bool)
     case setVolumeLevel(VolumeState)
@@ -120,6 +144,21 @@ public enum RemoteMessage: Equatable, Sendable {
         case let .imeKeyInject(appPackage):
             w.writeMessage(Field.imeKeyInject) { m in
                 m.writeMessage(1) { a in a.writeString(1, appPackage) }
+            }
+        case let .imeBatchEdit(imeCounter, fieldCounter, edits):
+            w.writeMessage(Field.imeBatchEdit) { m in
+                m.writeInt32(1, imeCounter)
+                m.writeInt32(2, fieldCounter)
+                for edit in edits {
+                    m.writeMessage(3) { e in
+                        e.writeInt32(1, edit.insert)
+                        e.writeMessage(2) { o in
+                            o.writeInt32(1, edit.start)
+                            o.writeInt32(2, edit.end)
+                            o.writeString(3, edit.value)
+                        }
+                    }
+                }
             }
         case .imeShowRequest:
             w.writeMessage(Field.imeShowRequest) { _ in }
@@ -240,6 +279,38 @@ public enum RemoteMessage: Equatable, Sendable {
                     }
                 }
                 result = .imeKeyInject(appPackage: pkg)
+
+            case Field.imeBatchEdit:
+                var imeCounter: Int32 = 0, fieldCounter: Int32 = 0
+                var edits: [ImeEdit] = []
+                while let (f, w) = try m.nextField() {
+                    switch f {
+                    case 1: imeCounter = try m.readInt32()
+                    case 2: fieldCounter = try m.readInt32()
+                    case 3:
+                        var e = try m.readMessage()
+                        var edit = ImeEdit(insert: 0, start: 0, end: 0, value: "")
+                        while let (ef, ew) = try e.nextField() {
+                            switch ef {
+                            case 1: edit.insert = try e.readInt32()
+                            case 2:
+                                var o = try e.readMessage()
+                                while let (of, ow) = try o.nextField() {
+                                    switch of {
+                                    case 1: edit.start = try o.readInt32()
+                                    case 2: edit.end = try o.readInt32()
+                                    case 3: edit.value = try o.readString()
+                                    default: try o.skip(ow)
+                                    }
+                                }
+                            default: try e.skip(ew)
+                            }
+                        }
+                        edits.append(edit)
+                    default: try m.skip(w)
+                    }
+                }
+                result = .imeBatchEdit(imeCounter: imeCounter, fieldCounter: fieldCounter, edits: edits)
 
             case Field.imeShowRequest:
                 result = .imeShowRequest

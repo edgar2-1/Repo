@@ -37,6 +37,8 @@ public final class RemoteClient: @unchecked Sendable {
     private var _isReady = false
     private var readTask: Task<Void, Never>?
     private var readyWaiters: [CheckedContinuation<Void, Error>] = []
+    private var imeCounter: Int32 = 0
+    private var fieldCounter: Int32 = 0
 
     public var isReady: Bool {
         lock.lock(); defer { lock.unlock() }
@@ -93,6 +95,19 @@ public final class RemoteClient: @unchecked Sendable {
     public func send(_ key: KeyCode, _ direction: KeyDirection = .short) async throws {
         guard isReady else { throw RemoteClientError.notConnected }
         try await connection.send(RemoteMessage.keyInject(key, direction).encode())
+    }
+
+    /// Types text into the focused field via the TV's input method. The TV
+    /// must have reported a text field (it does so whenever one gains focus).
+    public func sendText(_ text: String) async throws {
+        guard isReady else { throw RemoteClientError.notConnected }
+        guard !text.isEmpty else { return }
+        lock.lock()
+        let counters = (imeCounter, fieldCounter)
+        lock.unlock()
+        let message = RemoteMessage.imeBatchEdit(imeCounter: counters.0, fieldCounter: counters.1,
+                                                 edits: [.typing(text)])
+        try await connection.send(message.encode())
     }
 
     /// Opens a deep link / app link on the TV, e.g. `https://www.netflix.com`.
@@ -162,6 +177,11 @@ public final class RemoteClient: @unchecked Sendable {
             eventContinuation.yield(.volumeChanged(volume))
         case let .imeKeyInject(appPackage):
             if !appPackage.isEmpty { eventContinuation.yield(.currentApp(appPackage)) }
+        case let .imeBatchEdit(ime, field, _):
+            lock.lock()
+            imeCounter = ime
+            fieldCounter = field
+            lock.unlock()
         case .error(let value) where value:
             throw RemoteClientError.remoteError
         default:

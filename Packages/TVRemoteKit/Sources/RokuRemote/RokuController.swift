@@ -85,6 +85,28 @@ public final class RokuController: TVController, @unchecked Sendable {
         try await post(RokuECP.keyURL(host: host, action: action, key: name))
     }
 
+    public var textEntry: TextEntryFeatures { .all }
+
+    public func sendText(_ text: String) async throws {
+        guard connected else { throw TVControllerError.notConnected }
+        for character in text {
+            guard let url = RokuECP.literalURL(host: host, character: character) else { continue }
+            try await post(url)
+        }
+    }
+
+    public func deleteText(count: Int) async throws {
+        guard connected else { throw TVControllerError.notConnected }
+        for _ in 0 ..< max(count, 0) {
+            try await post(RokuECP.keyURL(host: host, action: "keypress", key: "Backspace"))
+        }
+    }
+
+    public func submitText() async throws {
+        guard connected else { throw TVControllerError.notConnected }
+        try await post(RokuECP.keyURL(host: host, action: "keypress", key: "Enter"))
+    }
+
     public func availableApps() async throws -> [TVApp] {
         let (data, _) = try await http.get(RokuECP.baseURL(host: host).appendingPathComponent("query/apps"))
         return RokuAppList.parse(data)

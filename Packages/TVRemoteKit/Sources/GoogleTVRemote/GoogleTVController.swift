@@ -73,6 +73,26 @@ public final class GoogleTVController: TVController, @unchecked Sendable {
         }
     }
 
+    public var textEntry: TextEntryFeatures { .all }
+
+    public func sendText(_ text: String) async throws {
+        do {
+            try await client.sendText(text)
+        } catch RemoteClientError.notConnected {
+            throw TVControllerError.notConnected
+        }
+    }
+
+    public func deleteText(count: Int) async throws {
+        for _ in 0 ..< max(count, 0) {
+            do { try await client.send(.del, .short) } catch RemoteClientError.notConnected { throw TVControllerError.notConnected }
+        }
+    }
+
+    public func submitText() async throws {
+        do { try await client.send(.enter, .short) } catch RemoteClientError.notConnected { throw TVControllerError.notConnected }
+    }
+
     public func availableApps() async throws -> [TVApp] { Self.apps }
 
     public func launch(_ app: TVApp) async throws {

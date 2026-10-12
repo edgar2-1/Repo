@@ -22,6 +22,16 @@ struct MoreView: View {
                 Text(powerText)
             }
 
+            if !store.textEntry.isEmpty {
+                Section {
+                    NavigationLink {
+                        TextEntryView()
+                    } label: {
+                        Label("Keyboard", systemImage: "keyboard")
+                    }
+                }
+            }
+
             Section("Apps") {
                 if store.apps.isEmpty {
                     Text(store.phase == .connected ? "No apps reported" : "Connect to see apps")

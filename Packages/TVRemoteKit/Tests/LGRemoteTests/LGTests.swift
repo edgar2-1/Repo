@@ -57,3 +57,13 @@ final class LGTests: XCTestCase {
         XCTAssertEqual(apps.launchPoints.first?.symbol, "n.square.fill")
     }
 }
+
+final class LGTextTests: XCTestCase {
+    func testTextEndpoints() {
+        XCTAssertEqual(LGProtocol.Endpoint.insertText, "ssap://com.webos.service.ime/insertText")
+        XCTAssertEqual(LGProtocol.Endpoint.deleteCharacters, "ssap://com.webos.service.ime/deleteCharacters")
+        XCTAssertEqual(LGProtocol.Endpoint.sendEnter, "ssap://com.webos.service.ime/sendEnterKey")
+        let text = LGProtocol.encode(LGProtocol.requestMessage(id: "9", uri: LGProtocol.Endpoint.insertText, payload: ["text": "abc", "replace": 0]))
+        XCTAssertEqual(text, #"{"id":"9","payload":{"replace":0,"text":"abc"},"type":"request","uri":"ssap:\/\/com.webos.service.ime\/insertText"}"#)
+    }
+}

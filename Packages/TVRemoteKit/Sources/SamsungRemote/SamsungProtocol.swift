@@ -65,6 +65,28 @@ public enum SamsungProtocol {
         ]
     }
 
+    /// Some TVs only accept typed text after this broadcast.
+    public static func textReceivedMessage() -> [String: Any] {
+        ["method": "ms.channel.emit", "params": ["event": "custom.remote.textReceived", "to": "broadcast"]]
+    }
+
+    /// Types `text` into the focused field (sent base64-encoded).
+    public static func textMessage(_ text: String) -> [String: Any] {
+        [
+            "method": "ms.remote.control",
+            "params": [
+                "Cmd": Data(text.utf8).base64EncodedString(),
+                "DataOfCmd": "base64",
+                "TypeOfRemote": "SendInputString",
+            ],
+        ]
+    }
+
+    /// Ends the text session (submits the field).
+    public static func textEndMessage() -> [String: Any] {
+        ["method": "ms.remote.control", "params": ["TypeOfRemote": "SendInputEnd"]]
+    }
+
     public static func encode(_ message: [String: Any]) -> String {
         let data = try! JSONSerialization.data(withJSONObject: message, options: [.sortedKeys])
         return String(decoding: data, as: UTF8.self)

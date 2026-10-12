@@ -31,6 +31,7 @@ final class RemoteStore: ObservableObject {
 
     var supportedKeys: Set<TVKey> { controller?.supportedKeys ?? Set(TVKey.allCases) }
     var supportsHold: Bool { controller?.supportsHold ?? true }
+    var textEntry: TextEntryFeatures { controller?.textEntry ?? .none }
 
     private var controller: TVController?
     private var eventTask: Task<Void, Never>?
@@ -149,6 +150,7 @@ final class RemoteStore: ObservableObject {
         saved.selectedID = tv.id
         resetTVState()
         connect()
+        publishComplicationState()
     }
 
     func remove(_ tv: SavedTV) {
@@ -164,6 +166,7 @@ final class RemoteStore: ObservableObject {
             select(next)
         }
         pushSync()
+        publishComplicationState()
     }
 
     /// Forgets every TV and the Google TV client certificate.
@@ -245,8 +248,10 @@ final class RemoteStore: ObservableObject {
             phase = .pairingPrompt
         case .connected:
             phase = .connected
+            publishComplicationState()
         case let .powerChanged(isOn):
             self.isOn = isOn
+            publishComplicationState()
         case let .volumeChanged(level, max, muted):
             volume = VolumeInfo(level: level, max: max, muted: muted)
         case let .currentApp(name):
@@ -291,6 +296,23 @@ final class RemoteStore: ObservableObject {
         }
     }
 
+    // MARK: Text entry
+
+    func sendText(_ text: String) async throws {
+        guard let controller else { throw TVControllerError.notConnected }
+        try await controller.sendText(text)
+    }
+
+    func deleteText(count: Int = 1) async throws {
+        guard let controller else { throw TVControllerError.notConnected }
+        try await controller.deleteText(count: count)
+    }
+
+    func submitText() async throws {
+        guard let controller else { throw TVControllerError.notConnected }
+        try await controller.submitText()
+    }
+
     func refreshApps() async {
         guard let controller else { return }
         if let list = try? await controller.availableApps() {
@@ -317,6 +339,13 @@ final class RemoteStore: ObservableObject {
         default:
             phase = .disconnected(Self.describe(error))
         }
+    }
+
+    /// Hands the watch face complication what it shows: TV name, brand, power.
+    private func publishComplicationState() {
+        #if os(watchOS)
+        ComplicationState(tvName: selected?.name, brand: selected?.brand, isOn: isOn, updatedAt: Date()).save()
+        #endif
     }
 
     static func describe(_ error: Error) -> String {

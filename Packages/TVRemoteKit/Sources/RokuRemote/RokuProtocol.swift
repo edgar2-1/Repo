@@ -29,6 +29,12 @@ public enum RokuECP {
     public static func keyURL(host: String, action: String, key: String) -> URL {
         baseURL(host: host).appendingPathComponent(action).appendingPathComponent(key)
     }
+
+    /// `keypress/Lit_<char>` types one character; the character is percent-encoded.
+    public static func literalURL(host: String, character: Character) -> URL? {
+        let encoded = String(character).addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+        return URL(string: "http://\(host):\(port)/keypress/Lit_\(encoded)")
+    }
 }
 
 /// `/query/device-info`.

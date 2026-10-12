@@ -59,3 +59,12 @@ final class RokuTests: XCTestCase {
         XCTAssertEqual(RokuAppList.parseActiveApp(Data(xml.utf8)), "YouTube")
     }
 }
+
+final class RokuTextTests: XCTestCase {
+    func testLiteralURLsArePercentEncoded() {
+        XCTAssertEqual(RokuECP.literalURL(host: "10.0.0.2", character: "a")?.absoluteString, "http://10.0.0.2:8060/keypress/Lit_a")
+        XCTAssertEqual(RokuECP.literalURL(host: "10.0.0.2", character: " ")?.absoluteString, "http://10.0.0.2:8060/keypress/Lit_%20")
+        XCTAssertEqual(RokuECP.literalURL(host: "10.0.0.2", character: "&")?.absoluteString, "http://10.0.0.2:8060/keypress/Lit_%26")
+        XCTAssertEqual(RokuECP.literalURL(host: "10.0.0.2", character: "é")?.absoluteString, "http://10.0.0.2:8060/keypress/Lit_%C3%A9")
+    }
+}

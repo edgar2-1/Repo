@@ -30,9 +30,26 @@ public enum TVEvent: Sendable, Equatable {
     case disconnected(reason: String?)
 }
 
+/// What a platform's on-screen text field can be told to do.
+public struct TextEntryFeatures: OptionSet, Sendable {
+    public let rawValue: Int
+    public init(rawValue: Int) { self.rawValue = rawValue }
+
+    /// Type characters into the focused field.
+    public static let insert = TextEntryFeatures(rawValue: 1 << 0)
+    /// Delete characters before the cursor.
+    public static let delete = TextEntryFeatures(rawValue: 1 << 1)
+    /// Press Return / submit the field.
+    public static let submit = TextEntryFeatures(rawValue: 1 << 2)
+
+    public static let none: TextEntryFeatures = []
+    public static let all: TextEntryFeatures = [.insert, .delete, .submit]
+}
+
 public enum TVControllerError: Error, Sendable, Equatable {
     case notConnected
     case unsupportedKey(TVKey)
+    case unsupportedFeature(String)
     case timeout
     /// The user declined the pairing prompt on the TV, or the stored credential was revoked.
     case notAuthorized
@@ -45,6 +62,7 @@ extension TVControllerError: LocalizedError {
         switch self {
         case .notConnected: return "Not connected to the TV."
         case .unsupportedKey(let key): return "This TV doesn't support \(key.rawValue)."
+        case .unsupportedFeature(let name): return "This TV doesn't support \(name)."
         case .timeout: return "The TV didn't answer in time."
         case .notAuthorized: return "The TV didn't allow this remote. Pair again."
         case .badResponse(let detail): return "Unexpected reply from the TV: \(detail)"
@@ -69,16 +87,40 @@ public protocol TVController: AnyObject, Sendable {
     /// (Samsung token, LG client key). `nil` when nothing is needed.
     var credential: String? { get }
 
+    /// Text-entry abilities for the TV's focused on-screen field.
+    var textEntry: TextEntryFeatures { get }
+
     func connect() async throws
     func disconnect()
     func send(_ key: TVKey, phase: TVKeyPhase) async throws
     /// Apps to show in the launcher. May query the TV; may be static.
     func availableApps() async throws -> [TVApp]
     func launch(_ app: TVApp) async throws
+
+    /// Types `text` into the focused field on the TV.
+    func sendText(_ text: String) async throws
+    /// Deletes `count` characters before the cursor.
+    func deleteText(count: Int) async throws
+    /// Presses Return in the focused field.
+    func submitText() async throws
 }
 
 public extension TVController {
     func send(_ key: TVKey) async throws {
         try await send(key, phase: .tap)
+    }
+
+    var textEntry: TextEntryFeatures { .none }
+
+    func sendText(_ text: String) async throws {
+        throw TVControllerError.unsupportedFeature("text entry")
+    }
+
+    func deleteText(count: Int) async throws {
+        throw TVControllerError.unsupportedFeature("deleting text")
+    }
+
+    func submitText() async throws {
+        throw TVControllerError.unsupportedFeature("submitting text")
     }
 }

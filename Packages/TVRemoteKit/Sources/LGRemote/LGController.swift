@@ -123,6 +123,25 @@ public final class LGController: TVController, @unchecked Sendable {
         }
     }
 
+    public var textEntry: TextEntryFeatures { .all }
+
+    public func sendText(_ text: String) async throws {
+        guard connected else { throw TVControllerError.notConnected }
+        guard !text.isEmpty else { return }
+        _ = try await request(LGProtocol.Endpoint.insertText, payload: ["text": text, "replace": 0])
+    }
+
+    public func deleteText(count: Int) async throws {
+        guard connected else { throw TVControllerError.notConnected }
+        guard count > 0 else { return }
+        _ = try await request(LGProtocol.Endpoint.deleteCharacters, payload: ["count": count])
+    }
+
+    public func submitText() async throws {
+        guard connected else { throw TVControllerError.notConnected }
+        _ = try await request(LGProtocol.Endpoint.sendEnter)
+    }
+
     public func availableApps() async throws -> [TVApp] {
         guard connected else { return LGProtocol.apps }
         let reply = try await request(LGProtocol.Endpoint.listApps)

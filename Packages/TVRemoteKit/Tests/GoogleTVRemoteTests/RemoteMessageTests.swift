@@ -81,3 +81,34 @@ final class RemoteMessageTests: XCTestCase {
         XCTAssertEqual(try RemoteMessage.decode(message.encode()), message)
     }
 }
+
+final class ImeMessageTests: XCTestCase {
+    func testBatchEditRoundTripAndWireFormat() throws {
+        let message = RemoteMessage.imeBatchEdit(imeCounter: 5, fieldCounter: 2, edits: [.typing("hi")])
+        let encoded = message.encode()
+        // field 21 (LEN) { ime_counter=5, field_counter=2, edit_info { insert=1, text_field_status { start=1, end=1, value="hi" } } }
+        XCTAssertEqual(encoded, [0xAA, 0x01, 0x12,                 // field 21, LEN, 18 bytes
+                                 0x08, 0x05, 0x10, 0x02,            // ime_counter=5, field_counter=2
+                                 0x1A, 0x0C, 0x08, 0x01,            // edit_info { insert=1,
+                                 0x12, 0x08, 0x08, 0x01, 0x10, 0x01, 0x1A, 0x02, 0x68, 0x69]) // text_field_status { 1, 1, "hi" } }
+        XCTAssertEqual(try RemoteMessage.decode(encoded), message)
+    }
+
+    func testTypingEditPutsCursorAtEnd() {
+        let edit = ImeEdit.typing("hello")
+        XCTAssertEqual(edit.insert, 1)
+        XCTAssertEqual(edit.start, 4)
+        XCTAssertEqual(edit.end, 4)
+        XCTAssertEqual(edit.value, "hello")
+        XCTAssertEqual(ImeEdit.typing("").start, 0)
+    }
+
+    func testDecodesCountersFromTV() throws {
+        var w = ProtoWriter()
+        w.writeMessage(21) { m in
+            m.writeInt32(1, 9)
+            m.writeInt32(2, 3)
+        }
+        XCTAssertEqual(try RemoteMessage.decode(w.bytes), .imeBatchEdit(imeCounter: 9, fieldCounter: 3, edits: []))
+    }
+}

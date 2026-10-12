@@ -4,17 +4,27 @@ import TVRemoteCore
 /// Full-size remote for iPhone.
 struct PhoneRemoteView: View {
     @EnvironmentObject private var store: RemoteStore
+    @State private var showKeyboard = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 22) {
                 StatusBanner()
 
-                HStack(spacing: 26) {
-                    RemoteButton(.power, systemImage: "power", size: 56, tint: .red.opacity(0.8), allowsHold: false)
-                    RemoteButton(.input, systemImage: "rectangle.on.rectangle", size: 56, allowsHold: false)
-                    RemoteButton(.assistant, systemImage: "mic.fill", size: 56, allowsHold: false)
-                    RemoteButton(.settings, systemImage: "gearshape.fill", size: 56, allowsHold: false)
+                HStack(spacing: 16) {
+                    RemoteButton(.power, systemImage: "power", size: 52, tint: .red.opacity(0.8), allowsHold: false)
+                    RemoteButton(.input, systemImage: "rectangle.on.rectangle", size: 52, allowsHold: false)
+                    RemoteButton(.assistant, systemImage: "mic.fill", size: 52, allowsHold: false)
+                    RemoteButton(.settings, systemImage: "gearshape.fill", size: 52, allowsHold: false)
+                    Button { showKeyboard = true } label: {
+                        Image(systemName: "keyboard")
+                            .font(.system(size: 22, weight: .semibold))
+                            .frame(width: 52, height: 52)
+                            .background(Circle().fill(Color.gray.opacity(0.3)))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(store.textEntry.isEmpty)
+                    .opacity(store.textEntry.isEmpty ? 0.3 : 1)
                 }
 
                 DPadCluster()
@@ -35,6 +45,10 @@ struct PhoneRemoteView: View {
             .padding(.bottom, 24)
         }
         .background(Color(.systemGroupedBackground))
+        .sheet(isPresented: $showKeyboard) {
+            NavigationStack { TextEntryView() }
+                .presentationDetents([.medium])
+        }
     }
 }
 
