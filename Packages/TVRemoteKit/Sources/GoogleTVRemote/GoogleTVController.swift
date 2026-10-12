@@ -12,7 +12,7 @@ public final class GoogleTVController: TVController, @unchecked Sendable {
     public let supportsHold = true
     public var credential: String? { nil }
 
-    public let supportedKeys: Set<TVKey> = Set(TVKey.allCases.filter { Self.keyMap[$0] != nil })
+    public let supportedKeys: Set<TVKey> = Set(TVKey.allCases.filter { GoogleTVController.keyMap[$0] != nil })
 
     private let client: RemoteClient
     private let eventContinuation: AsyncStream<TVEvent>.Continuation
