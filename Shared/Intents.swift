@@ -88,15 +88,21 @@ struct TVRemoteShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: SendTVActionIntent(action: .playPause),
-            phrases: ["Pause the TV with \(.applicationName)", "Play the TV with \(.applicationName)", "Pause \(.applicationName)"]
+            phrases: ["Pause the TV with \(.applicationName)", "Play the TV with \(.applicationName)", "Pause \(.applicationName)"],
+            shortTitle: "Play / Pause",
+            systemImageName: "playpause.fill"
         )
         AppShortcut(
             intent: SendTVActionIntent(action: .power),
-            phrases: ["Turn off the TV with \(.applicationName)", "Turn on the TV with \(.applicationName)", "Toggle the TV with \(.applicationName)"]
+            phrases: ["Turn off the TV with \(.applicationName)", "Turn on the TV with \(.applicationName)", "Toggle the TV with \(.applicationName)"],
+            shortTitle: "Power",
+            systemImageName: "power"
         )
         AppShortcut(
             intent: SendTVActionIntent(action: .mute),
-            phrases: ["Mute the TV with \(.applicationName)"]
+            phrases: ["Mute the TV with \(.applicationName)"],
+            shortTitle: "Mute",
+            systemImageName: "speaker.slash.fill"
         )
     }
 }

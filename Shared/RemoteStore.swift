@@ -298,7 +298,7 @@ final class RemoteStore: ObservableObject {
                 self.eventTask?.cancel()
                 self.eventTask = Task { [weak self] in
                     for await event in controller.events {
-                        await self?.handle(event)
+                        self?.handle(event)
                     }
                 }
                 try await controller.connect()

@@ -24,8 +24,8 @@ name: TVRemote
 options:
   bundleIdPrefix: com.example
   deploymentTarget:
-    iOS: "16.0"
-    watchOS: "9.0"
+    iOS: "17.0"
+    watchOS: "10.0"
   xcodeVersion: "15.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
@@ -67,7 +67,7 @@ targets:
   PhoneRemote:
     templates: [RemoteApp]
     platform: iOS
-    deploymentTarget: "16.0"
+    deploymentTarget: "17.0"
     sources:
       - path: PhoneRemote
       - path: Shared
@@ -91,7 +91,7 @@ targets:
   WatchRemote:
     templates: [RemoteApp]
     platform: watchOS
-    deploymentTarget: "9.0"
+    deploymentTarget: "10.0"
     sources:
       - path: WatchRemote
       - path: Shared
@@ -115,7 +115,7 @@ targets:
     templates: [RemoteApp]
     type: app-extension
     platform: watchOS
-    deploymentTarget: "9.0"
+    deploymentTarget: "10.0"
     sources:
       - path: WatchComplication
       - path: Shared/ComplicationState.swift

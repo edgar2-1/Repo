@@ -102,10 +102,8 @@ public final class RemoteClient: @unchecked Sendable {
     public func sendText(_ text: String) async throws {
         guard isReady else { throw RemoteClientError.notConnected }
         guard !text.isEmpty else { return }
-        lock.lock()
-        let counters = (imeCounter, fieldCounter)
-        lock.unlock()
-        let message = RemoteMessage.imeBatchEdit(imeCounter: counters.0, fieldCounter: counters.1,
+        let counters = imeCounters()
+        let message = RemoteMessage.imeBatchEdit(imeCounter: counters.ime, fieldCounter: counters.field,
                                                  edits: [.typing(text)])
         try await connection.send(message.encode())
     }
@@ -119,12 +117,27 @@ public final class RemoteClient: @unchecked Sendable {
     // MARK: Internals
 
     private func waitUntilReady() async throws {
-        lock.lock()
-        if _isReady { lock.unlock(); return }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            lock.lock()
+            if _isReady {
+                lock.unlock()
+                continuation.resume()
+                return
+            }
             readyWaiters.append(continuation)
             lock.unlock()
         }
+    }
+
+    private func imeCounters() -> (ime: Int32, field: Int32) {
+        lock.lock(); defer { lock.unlock() }
+        return (imeCounter, fieldCounter)
+    }
+
+    private func setImeCounters(ime: Int32, field: Int32) {
+        lock.lock(); defer { lock.unlock() }
+        imeCounter = ime
+        fieldCounter = field
     }
 
     private func markReady() {
@@ -178,10 +191,7 @@ public final class RemoteClient: @unchecked Sendable {
         case let .imeKeyInject(appPackage):
             if !appPackage.isEmpty { eventContinuation.yield(.currentApp(appPackage)) }
         case let .imeBatchEdit(ime, field, _):
-            lock.lock()
-            imeCounter = ime
-            fieldCounter = field
-            lock.unlock()
+            setImeCounters(ime: ime, field: field)
         case .error(let value) where value:
             throw RemoteClientError.remoteError
         default:

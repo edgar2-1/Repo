@@ -65,7 +65,7 @@ project.yml           XcodeGen spec that produces the Xcode project
 
 ## Requirements
 
-- iPhone running iOS 16 or later, and/or Apple Watch running watchOS 9 or later
+- iPhone running iOS 17 or later, and/or Apple Watch running watchOS 10 or later (Series 4 and newer)
 - Xcode 15 or later, and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
   (`brew install xcodegen`)
 - A free or paid Apple Developer account for signing
