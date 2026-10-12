@@ -9,13 +9,16 @@ public struct SavedTV: Codable, Identifiable, Hashable, Sendable {
     public var host: String
     /// Optional hint for reconnecting, e.g. a Samsung MAC for Wake-on-LAN.
     public var macAddress: String?
+    /// User-chosen accent for the TV picker ("red", "blue", …); nil for default.
+    public var colorName: String?
 
-    public init(id: UUID = UUID(), brand: TVBrand, name: String, host: String, macAddress: String? = nil) {
+    public init(id: UUID = UUID(), brand: TVBrand, name: String, host: String, macAddress: String? = nil, colorName: String? = nil) {
         self.id = id
         self.brand = brand
         self.name = name
         self.host = host
         self.macAddress = macAddress
+        self.colorName = colorName
     }
 }
 

@@ -11,8 +11,10 @@
 #   WatchRemote        – Apple Watch app; also runs without the phone
 #   WatchComplication  – watch face complication (WidgetKit); embedded in WatchRemote
 #
-# APP_GROUP_ID must be "group." + the phone bundle identifier and is used by the
-# watch app and complication to share state. Change all three together.
+# APP_GROUP_ID must be "group." + the phone bundle identifier. All three targets
+# use it to share saved TVs (UserDefaults) and credentials (keychain access
+# group) so Siri, Shortcuts and the complication can control TVs without the
+# app open. Change the bundle ids and APP_GROUP_ID together.
 #
 # Optional: SSDP discovery of Roku/Samsung/LG needs the multicast entitlement
 # (com.apple.developer.networking.multicast), which Apple grants on request.
@@ -74,6 +76,11 @@ targets:
       - target: WatchRemote
     info:
       path: PhoneRemote/Info.plist
+    entitlements:
+      path: PhoneRemote/PhoneRemote.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(APP_GROUP_ID)
     settings:
       base:
         PRODUCT_NAME: TV Remote
@@ -105,15 +112,17 @@ targets:
         TARGETED_DEVICE_FAMILY: "4"
 
   WatchComplication:
+    templates: [RemoteApp]
     type: app-extension
     platform: watchOS
     deploymentTarget: "9.0"
     sources:
       - path: WatchComplication
       - path: Shared/ComplicationState.swift
+      - path: Shared/ControllerFactory.swift
+      - path: Shared/Intents.swift
+      - path: Shared/ErrorText.swift
     dependencies:
-      - package: TVRemoteKit
-        product: TVRemoteCore
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework
     info:

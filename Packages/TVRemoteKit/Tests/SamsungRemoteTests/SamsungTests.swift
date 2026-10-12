@@ -50,6 +50,8 @@ final class SamsungTests: XCTestCase {
             XCTAssertNotNil(SamsungProtocol.keyMap[key], "\(key)")
         }
         XCTAssertEqual(SamsungProtocol.keyMap[.back], "KEY_RETURN")
+        XCTAssertEqual(SamsungProtocol.keyMap[.num0], "KEY_0")
+        XCTAssertEqual(SamsungProtocol.keyMap[.num9], "KEY_9")
     }
 }
 

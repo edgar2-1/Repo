@@ -15,6 +15,9 @@ public final class RokuController: TVController, @unchecked Sendable {
 
     public private(set) var info: RokuDeviceInfo?
 
+    /// Seconds between power / active-app refreshes. Raise it to save battery.
+    public var pollInterval: Double = 10
+
     private let host: String
     private let http: HTTPClient
     private let eventContinuation: AsyncStream<TVEvent>.Continuation
@@ -39,7 +42,7 @@ public final class RokuController: TVController, @unchecked Sendable {
         return DiscoveredDevice(brand: .roku, name: info.name, host: host, detail: info.model)
     }
 
-    static func fetchInfo(host: String, http: HTTPClient) async throws -> RokuDeviceInfo {
+    public static func fetchInfo(host: String, http: HTTPClient = .standard) async throws -> RokuDeviceInfo {
         let (data, _) = try await http.get(RokuECP.baseURL(host: host).appendingPathComponent("query/device-info"))
         guard let info = RokuDeviceInfo(xml: data) else {
             throw TVControllerError.badResponse("device-info")
@@ -132,8 +135,9 @@ public final class RokuController: TVController, @unchecked Sendable {
         pollTask?.cancel()
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(10))
                 guard let self, self.connected else { return }
+                try? await Task.sleep(for: .seconds(self.pollInterval))
+                guard self.connected else { return }
                 if let info = try? await Self.fetchInfo(host: self.host, http: self.http) {
                     if info.isOn != self.info?.isOn {
                         self.eventContinuation.yield(.powerChanged(isOn: info.isOn))

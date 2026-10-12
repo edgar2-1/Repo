@@ -14,6 +14,9 @@ struct PhoneSettingsView: View {
             Section {
                 ForEach(store.tvs) { tv in
                     HStack {
+                        Circle()
+                            .fill(TVColor.color(for: tv))
+                            .frame(width: 12, height: 12)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(tv.name)
                             Text("\(tv.brand.displayName) · \(tv.host)")
@@ -39,6 +42,18 @@ struct PhoneSettingsView: View {
                         }
                         .tint(.blue)
                     }
+                    .contextMenu {
+                        Menu("Color") {
+                            ForEach(TVColor.allCases) { color in
+                                Button(color.title) { store.setColor(tv, colorName: color.rawValue) }
+                            }
+                            Button("Default") { store.setColor(tv, colorName: nil) }
+                        }
+                        Button("Rename") {
+                            renaming = tv
+                            newName = tv.name
+                        }
+                    }
                 }
                 NavigationLink {
                     AddTVView()
@@ -48,7 +63,7 @@ struct PhoneSettingsView: View {
             } header: {
                 Text("TVs")
             } footer: {
-                Text("TVs and their pairings sync to your Apple Watch automatically.")
+                Text("Tap to switch. Swipe for rename or forget; touch and hold to pick a color. TVs and pairings sync to your Apple Watch automatically.")
             }
 
             Section {
@@ -56,6 +71,14 @@ struct PhoneSettingsView: View {
                 Button("Reset everything", role: .destructive) { confirmReset = true }
             } footer: {
                 Text("Reset removes every TV and its saved pairing on this phone and the watch, plus this phone's Google TV pairing identity.")
+            }
+
+            Section {
+                Text("Say \"Hey Siri, pause the TV with TV Remote\" or add actions in the Shortcuts app.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Siri")
             }
 
             Section("About") {

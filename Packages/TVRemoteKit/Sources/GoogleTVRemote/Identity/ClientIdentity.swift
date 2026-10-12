@@ -1,6 +1,7 @@
 #if canImport(Security) && !os(Linux)
 import Foundation
 import Security
+import TVRemoteCore
 
 public enum ClientIdentityError: Error, Sendable {
     case keychain(OSStatus, String)
@@ -51,7 +52,7 @@ public final class ClientIdentity: @unchecked Sendable {
             kSecReturnRef: true,
         ]
         var result: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        let status = SecItemCopyMatching(KeychainConfig.scoped(query) as CFDictionary, &result)
         if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess else {
             throw ClientIdentityError.keychain(status, "listing identities")
@@ -70,14 +71,14 @@ public final class ClientIdentity: @unchecked Sendable {
 
     /// Deletes the stored certificate and key. Pairing must be redone afterwards.
     public static func reset() {
-        _ = SecItemDelete([
+        _ = SecItemDelete(KeychainConfig.scoped([
             kSecClass: kSecClassCertificate,
             kSecAttrLabel: certificateLabel,
-        ] as CFDictionary)
-        _ = SecItemDelete([
+        ]) as CFDictionary)
+        _ = SecItemDelete(KeychainConfig.scoped([
             kSecClass: kSecClassKey,
             kSecAttrApplicationTag: keyTag,
-        ] as CFDictionary)
+        ]) as CFDictionary)
     }
 
     // MARK: Transfer between devices
@@ -118,7 +119,7 @@ public final class ClientIdentity: @unchecked Sendable {
             kSecReturnRef: true,
         ]
         var result: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        let status = SecItemCopyMatching(KeychainConfig.scoped(query) as CFDictionary, &result)
         if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess, let result else {
             throw ClientIdentityError.keychain(status, "loading certificate")
@@ -150,7 +151,7 @@ public final class ClientIdentity: @unchecked Sendable {
             kSecAttrLabel: "GoogleTVWatchRemote.client-key",
             kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
-        var status = SecItemAdd(addKey as CFDictionary, nil)
+        var status = SecItemAdd(KeychainConfig.scoped(addKey) as CFDictionary, nil)
         guard status == errSecSuccess || status == errSecDuplicateItem else {
             throw ClientIdentityError.keychain(status, "storing private key")
         }
@@ -161,7 +162,7 @@ public final class ClientIdentity: @unchecked Sendable {
             kSecAttrLabel: certificateLabel,
             kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
-        status = SecItemAdd(addCertificate as CFDictionary, nil)
+        status = SecItemAdd(KeychainConfig.scoped(addCertificate) as CFDictionary, nil)
         guard status == errSecSuccess || status == errSecDuplicateItem else {
             throw ClientIdentityError.keychain(status, "storing certificate")
         }

@@ -103,6 +103,10 @@ public protocol TVController: AnyObject, Sendable {
     func deleteText(count: Int) async throws
     /// Presses Return in the focused field.
     func submitText() async throws
+
+    /// Sets the volume to `level`. `current` is the last level the TV reported,
+    /// used by platforms that can only step the volume.
+    func setVolume(_ level: Int, current: Int) async throws
 }
 
 public extension TVController {
@@ -122,5 +126,15 @@ public extension TVController {
 
     func submitText() async throws {
         throw TVControllerError.unsupportedFeature("submitting text")
+    }
+
+    /// Default: step with volume keys. Capped so a stray drag can't blast the room.
+    func setVolume(_ level: Int, current: Int) async throws {
+        let delta = max(-30, min(30, level - current))
+        let key: TVKey = delta > 0 ? .volumeUp : .volumeDown
+        for _ in 0 ..< abs(delta) {
+            try await send(key, phase: .tap)
+            try? await Task.sleep(for: .milliseconds(60))
+        }
     }
 }

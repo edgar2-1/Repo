@@ -118,3 +118,19 @@ final class SimpleXMLTests: XCTestCase {
         XCTAssertEqual(parsed["app"], "YouTube")
     }
 }
+
+final class SavedTVCompatibilityTests: XCTestCase {
+    func testDecodesRecordsWithoutNewerFields() throws {
+        let json = #"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","brand":"roku","name":"Den","host":"10.0.0.4"}"#
+        let tv = try JSONDecoder().decode(SavedTV.self, from: Data(json.utf8))
+        XCTAssertEqual(tv.name, "Den")
+        XCTAssertNil(tv.macAddress)
+        XCTAssertNil(tv.colorName)
+    }
+
+    func testDigits() {
+        XCTAssertEqual(TVKey.digits.count, 10)
+        XCTAssertEqual(TVKey.num7.digit, 7)
+        XCTAssertNil(TVKey.home.digit)
+    }
+}

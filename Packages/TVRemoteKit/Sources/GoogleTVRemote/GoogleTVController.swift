@@ -114,6 +114,8 @@ public final class GoogleTVController: TVController, @unchecked Sendable {
         .rewind: .mediaRewind, .fastForward: .mediaFastForward, .previous: .mediaPrevious, .next: .mediaNext,
         .info: .info, .guide: .guide, .settings: .settings, .input: .tvInput, .search: .search, .assistant: .assist,
         .channelUp: .channelUp, .channelDown: .channelDown,
+        .num0: .num0, .num1: .num1, .num2: .num2, .num3: .num3, .num4: .num4,
+        .num5: .num5, .num6: .num6, .num7: .num7, .num8: .num8, .num9: .num9,
     ]
 
     /// App links the remote service opens directly.

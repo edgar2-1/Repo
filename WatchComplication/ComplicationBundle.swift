@@ -1,5 +1,6 @@
 import SwiftUI
 import WidgetKit
+import AppIntents
 import TVRemoteCore
 
 @main
@@ -77,6 +78,13 @@ struct ComplicationView: View {
                         Text(subtitle).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 0)
+                    if #available(watchOS 10.0, *), entry.state?.tvName != nil {
+                        // Runs the intent in place; the app doesn't need to open.
+                        Button(intent: SendTVActionIntent(action: .playPause)) {
+                            Image(systemName: "playpause.fill").font(.title3)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             case .accessoryInline:
                 Label(name, systemImage: symbol)

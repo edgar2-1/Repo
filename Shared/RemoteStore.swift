@@ -2,6 +2,10 @@ import Foundation
 import Combine
 import TVRemoteCore
 import GoogleTVRemote
+import RokuRemote
+#if os(watchOS)
+import WatchKit
+#endif
 
 /// App-wide state: saved TVs, the selected TV's live connection and what it reports.
 @MainActor
@@ -39,20 +43,69 @@ final class RemoteStore: ObservableObject {
     private var reconnectAttempts = 0
     private var shouldStayConnected = false
 
-    private let saved = SavedTVStore()
+    /// App Group defaults so the widget extension and App Intents see the same TVs.
+    static let sharedDefaults: UserDefaults = ComplicationState.sharedDefaults ?? .standard
+    private let saved = SavedTVStore(defaults: RemoteStore.sharedDefaults)
     private let secrets = SecretStore.shared
+    private var pendingKey: (TVKey, TVKeyPhase)?
+    private var volumeTask: Task<Void, Never>?
+    @Published private(set) var favoriteIDs: [String] = []
 
     private let sync = TVSync.shared
     private var lastAppliedSync: Date?
     private static let lastSyncKey = "tvremote.lastAppliedSync"
 
     init() {
+        KeychainConfig.accessGroup = ComplicationState.appGroupID.flatMap { $0.hasPrefix("$(") ? nil : $0 }
+        Self.migrateDefaultsIfNeeded(into: saved)
         tvs = saved.tvs
         selected = tvs.first { $0.id == saved.selectedID } ?? tvs.first
         phase = tvs.isEmpty ? .noTVs : .disconnected(nil)
         lastAppliedSync = UserDefaults.standard.object(forKey: Self.lastSyncKey) as? Date
+        favoriteIDs = Self.loadFavorites(for: selected?.id)
         sync.onReceive = { [weak self] payload in self?.apply(payload) }
         sync.activate()
+    }
+
+    /// Earlier builds kept TVs in standard defaults; move them to the shared container once.
+    private static func migrateDefaultsIfNeeded(into store: SavedTVStore) {
+        guard sharedDefaults !== UserDefaults.standard, store.tvs.isEmpty else { return }
+        let legacy = SavedTVStore(defaults: .standard)
+        guard !legacy.tvs.isEmpty else { return }
+        store.tvs = legacy.tvs
+        store.selectedID = legacy.selectedID
+        legacy.tvs = []
+    }
+
+    /// Called when the app comes to the foreground: reconnect fast and, with
+    /// several TVs, jump to the one that is actually on.
+    func activate() {
+        reconnectAttempts = 0
+        connect()
+        Task { await autoSelectPoweredTV() }
+    }
+
+    private func autoSelectPoweredTV() async {
+        guard tvs.count > 1, let current = selected else { return }
+        let candidates = tvs
+        // nil = unknown, true = on, false = off or unreachable.
+        var results: [UUID: Bool] = [:]
+        await withTaskGroup(of: (UUID, Bool?).self) { group in
+            for tv in candidates {
+                group.addTask {
+                    let checked: Bool?? = try? await withTimeout(seconds: 3) { await ControllerFactory.quickPowerCheck(tv) }
+                    return (tv.id, checked.flatMap { $0 })
+                }
+            }
+            for await (id, isOn) in group {
+                if let isOn { results[id] = isOn }
+            }
+        }
+        // Only move away from the current TV when we know it is off/unreachable
+        // and we know another one is on.
+        guard results[current.id] == false, phase != .connected,
+              let poweredOn = candidates.first(where: { results[$0.id] == true }) else { return }
+        select(poweredOn)
     }
 
     // MARK: Sync with the other device
@@ -149,8 +202,46 @@ final class RemoteStore: ObservableObject {
         selected = tv
         saved.selectedID = tv.id
         resetTVState()
+        favoriteIDs = Self.loadFavorites(for: tv.id)
         connect()
         publishComplicationState()
+    }
+
+    func setColor(_ tv: SavedTV, colorName: String?) {
+        var updated = tv
+        updated.colorName = colorName
+        saved.upsert(updated)
+        tvs = saved.tvs
+        if selected?.id == tv.id { selected = updated }
+        pushSync()
+    }
+
+    // MARK: Favorites (pinned apps, per TV)
+
+    var favoriteApps: [TVApp] {
+        favoriteIDs.compactMap { id in apps.first { $0.id == id } }
+    }
+
+    func isFavorite(_ app: TVApp) -> Bool { favoriteIDs.contains(app.id) }
+
+    func toggleFavorite(_ app: TVApp) {
+        if let index = favoriteIDs.firstIndex(of: app.id) {
+            favoriteIDs.remove(at: index)
+        } else {
+            favoriteIDs.append(app.id)
+            if favoriteIDs.count > 4 { favoriteIDs.removeFirst() }
+        }
+        if let id = selected?.id {
+            Self.sharedDefaults.set(favoriteIDs, forKey: Self.favoritesKey(id))
+        }
+        Haptics.play(.click)
+    }
+
+    private static func favoritesKey(_ id: UUID) -> String { "tvremote.favorites.\(id.uuidString)" }
+
+    private static func loadFavorites(for id: UUID?) -> [String] {
+        guard let id else { return [] }
+        return sharedDefaults.stringArray(forKey: favoritesKey(id)) ?? []
     }
 
     func remove(_ tv: SavedTV) {
@@ -218,6 +309,11 @@ final class RemoteStore: ObservableObject {
                 }
                 self.reconnectAttempts = 0
                 self.phase = .connected
+                self.tuneForBattery(controller)
+                if let (key, phase) = self.pendingKey {
+                    self.pendingKey = nil
+                    try? await controller.send(key, phase: phase)
+                }
                 await self.refreshApps()
             } catch {
                 self.controller?.disconnect()
@@ -284,8 +380,24 @@ final class RemoteStore: ObservableObject {
     }
 
     func hold(_ key: TVKey, began: Bool) {
-        if began { Haptics.play(.start) }
+        Haptics.play(began ? .start : .release)
         send(key, began ? .holdBegin : .holdEnd)
+    }
+
+    /// Drag-to-level volume. Debounced so a slider doesn't fire per pixel.
+    func setVolume(_ level: Int) {
+        guard let controller, let current = volume?.level else { return }
+        volumeTask?.cancel()
+        volumeTask = Task {
+            try? await Task.sleep(for: .milliseconds(200))
+            guard !Task.isCancelled else { return }
+            do {
+                try await controller.setVolume(level, current: current)
+                volume?.level = level
+            } catch {
+                reportFailure(error)
+            }
+        }
     }
 
     func launch(_ app: TVApp) {
@@ -321,7 +433,9 @@ final class RemoteStore: ObservableObject {
     }
 
     private func send(_ key: TVKey, _ phase: TVKeyPhase) {
-        guard let controller else {
+        guard let controller, self.phase == .connected else {
+            // Keep the tap instead of dropping it; it goes out as soon as we're back.
+            if phase != .holdEnd { pendingKey = (key, phase) }
             connect()
             return
         }
@@ -341,17 +455,20 @@ final class RemoteStore: ObservableObject {
         }
     }
 
+    /// Roku has no push channel and is polled; slow that down when the watch battery is low.
+    private func tuneForBattery(_ controller: TVController) {
+        #if os(watchOS)
+        guard let roku = controller as? RokuController else { return }
+        let device = WKInterfaceDevice.current()
+        device.isBatteryMonitoringEnabled = true
+        roku.pollInterval = device.batteryLevel >= 0 && device.batteryLevel < 0.2 ? 30 : 10
+        #endif
+    }
+
     /// Hands the watch face complication what it shows: TV name, brand, power.
     private func publishComplicationState() {
         #if os(watchOS)
         ComplicationState(tvName: selected?.name, brand: selected?.brand, isOn: isOn, updatedAt: Date()).save()
         #endif
-    }
-
-    static func describe(_ error: Error) -> String {
-        if let error = error as? TVControllerError, let text = error.errorDescription {
-            return text
-        }
-        return error.localizedDescription
     }
 }

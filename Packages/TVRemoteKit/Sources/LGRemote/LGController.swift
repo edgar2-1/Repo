@@ -125,6 +125,12 @@ public final class LGController: TVController, @unchecked Sendable {
 
     public var textEntry: TextEntryFeatures { .all }
 
+    /// webOS sets an absolute level directly.
+    public func setVolume(_ level: Int, current: Int) async throws {
+        guard connected else { throw TVControllerError.notConnected }
+        _ = try await request(LGProtocol.Endpoint.setVolume, payload: ["volume": max(0, min(100, level))])
+    }
+
     public func sendText(_ text: String) async throws {
         guard connected else { throw TVControllerError.notConnected }
         guard !text.isEmpty else { return }

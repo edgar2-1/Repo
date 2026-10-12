@@ -27,7 +27,8 @@ struct ConnectionBadge: View {
         case .connected, .noTVs:
             EmptyView()
         case .connecting:
-            pill("Connecting…", color: .yellow)
+            // Taps still work while this shows; they're queued and sent on reconnect.
+            pill("Reconnecting…", color: .yellow)
         case .pairingPrompt:
             pill("Allow on your TV", color: .orange)
         case .disconnected(let reason):

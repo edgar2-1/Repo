@@ -35,7 +35,7 @@ struct PhoneRootView: View {
         }
         .onChange(of: scenePhase) { newPhase in
             switch newPhase {
-            case .active: store.connect()
+            case .active: store.activate()
             case .background: store.disconnect()
             default: break
             }
@@ -67,6 +67,12 @@ struct TVPickerMenu: View {
             }
         } label: {
             Image(systemName: "tv")
+                .overlay(alignment: .bottomTrailing) {
+                    Circle()
+                        .fill(TVColor.color(for: store.selected))
+                        .frame(width: 8, height: 8)
+                        .offset(x: 2, y: 2)
+                }
         }
     }
 }

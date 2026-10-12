@@ -8,7 +8,7 @@ import UIKit
 /// Platform-neutral haptic feedback.
 enum Haptics {
     enum Kind {
-        case click, start, success, failure
+        case click, start, release, success, failure
     }
 
     @MainActor
@@ -18,6 +18,7 @@ enum Haptics {
         switch kind {
         case .click: type = .click
         case .start: type = .start
+        case .release: type = .stop
         case .success: type = .success
         case .failure: type = .failure
         }
@@ -28,6 +29,8 @@ enum Haptics {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         case .start:
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        case .release:
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.6)
         case .success:
             UINotificationFeedbackGenerator().notificationOccurred(.success)
         case .failure:

@@ -86,7 +86,7 @@ struct TextEntryView: View {
             text = ""
         } catch {
             Haptics.play(.failure)
-            status = RemoteStore.describe(error)
+            status = ErrorText.describe(error)
         }
     }
 
@@ -97,7 +97,7 @@ struct TextEntryView: View {
             status = "Deleted one character."
         } catch {
             Haptics.play(.failure)
-            status = RemoteStore.describe(error)
+            status = ErrorText.describe(error)
         }
     }
 }

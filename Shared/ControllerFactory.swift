@@ -38,6 +38,25 @@ enum ControllerFactory {
         }
     }
 
+    /// Cheap "is it on?" probe used to auto-select a TV at launch.
+    /// nil means the platform can't tell without a full connection.
+    static func quickPowerCheck(_ tv: SavedTV) async -> Bool? {
+        switch tv.brand {
+        case .googleTV:
+            return nil
+        case .roku:
+            guard let info = try? await RokuController.fetchInfo(host: tv.host) else { return false }
+            return info.isOn
+        case .samsung:
+            guard let info = await SamsungController.fetchInfo(host: tv.host) else { return false }
+            guard let state = info.powerState else { return true }
+            return state == "on"
+        case .lg:
+            if await SubnetScanner.probe(host: tv.host, port: 3000, timeoutSeconds: 1) { return true }
+            return await SubnetScanner.probe(host: tv.host, port: 3001, timeoutSeconds: 1)
+        }
+    }
+
     /// MAC address for Wake-on-LAN where the platform exposes one.
     static func macAddress(brand: TVBrand, host: String) async -> String? {
         switch brand {

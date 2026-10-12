@@ -69,7 +69,7 @@ struct ConnectTVView: View {
         do {
             controller = try ControllerFactory.make(for: draft, credential: nil, identity: store.identity)
         } catch {
-            state = .failed(RemoteStore.describe(error))
+            state = .failed(ErrorText.describe(error))
             return
         }
         self.controller = controller
@@ -85,7 +85,7 @@ struct ConnectTVView: View {
             try await controller.connect()
         } catch {
             controller.disconnect()
-            state = .failed(RemoteStore.describe(error))
+            state = .failed(ErrorText.describe(error))
             return
         }
 

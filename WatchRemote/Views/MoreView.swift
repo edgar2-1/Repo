@@ -22,12 +22,19 @@ struct MoreView: View {
                 Text(powerText)
             }
 
-            if !store.textEntry.isEmpty {
-                Section {
+            Section {
+                if !store.textEntry.isEmpty {
                     NavigationLink {
                         TextEntryView()
                     } label: {
                         Label("Keyboard", systemImage: "keyboard")
+                    }
+                }
+                if store.supportedKeys.contains(.num1) {
+                    NavigationLink {
+                        ScrollView { NumberPadView() }
+                    } label: {
+                        Label("Numbers", systemImage: "number")
                     }
                 }
             }
@@ -38,11 +45,11 @@ struct MoreView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(store.apps.prefix(24)) { app in
+                    ForEach((store.favoriteApps + store.apps.filter { !store.isFavorite($0) }).prefix(24)) { app in
                         Button {
                             store.launch(app)
                         } label: {
-                            Label(app.name, systemImage: app.symbol)
+                            Label(app.name, systemImage: store.isFavorite(app) ? "star.fill" : app.symbol)
                         }
                     }
                 }
@@ -54,6 +61,7 @@ struct MoreView: View {
                         store.select(tv)
                     } label: {
                         HStack {
+                            Circle().fill(TVColor.color(for: tv)).frame(width: 8, height: 8)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(tv.name).font(.footnote).lineLimit(1)
                                 Text("\(tv.brand.shortName) · \(tv.host)")

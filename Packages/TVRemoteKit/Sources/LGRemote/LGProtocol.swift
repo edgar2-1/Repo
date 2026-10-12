@@ -14,6 +14,8 @@ public enum LGProtocol {
         .channelUp: "CHANNELUP", .channelDown: "CHANNELDOWN",
         .play: "PLAY", .pause: "PAUSE", .stop: "STOP", .rewind: "REWIND", .fastForward: "FASTFORWARD",
         .volumeUp: "VOLUMEUP", .volumeDown: "VOLUMEDOWN", .mute: "MUTE",
+        .num0: "0", .num1: "1", .num2: "2", .num3: "3", .num4: "4",
+        .num5: "5", .num6: "6", .num7: "7", .num8: "8", .num9: "9",
     ]
 
     /// Keys handled through SSAP requests instead of the input socket.
@@ -39,6 +41,7 @@ public enum LGProtocol {
         public static let insertText = "ssap://com.webos.service.ime/insertText"
         public static let deleteCharacters = "ssap://com.webos.service.ime/deleteCharacters"
         public static let sendEnter = "ssap://com.webos.service.ime/sendEnterKey"
+        public static let setVolume = "ssap://audio/setVolume"
     }
 
     public static func socketURL(host: String, secure: Bool) -> URL {

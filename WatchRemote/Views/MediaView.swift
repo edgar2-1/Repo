@@ -9,7 +9,15 @@ struct MediaView: View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
                 RemoteButton(.rewind, systemImage: "gobackward.10", size: 40)
-                RemoteButton(.playPause, systemImage: "playpause.fill", size: 52, tint: .accentColor.opacity(0.85), allowsHold: false)
+                // A real Button, so the Double Tap gesture (Series 9 and later) can trigger it.
+                Button { store.press(.playPause) } label: {
+                    Image(systemName: "playpause.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .frame(width: 52, height: 52)
+                        .background(Circle().fill(Color.accentColor.opacity(0.85)))
+                }
+                .buttonStyle(.plain)
+                .doubleTapPrimaryAction()
                 RemoteButton(.fastForward, systemImage: "goforward.10", size: 40)
             }
             HStack(spacing: 10) {
@@ -18,9 +26,9 @@ struct MediaView: View {
                 RemoteButton(.next, systemImage: "forward.end.fill", size: 36)
             }
             HStack(spacing: 10) {
-                RemoteButton(.volumeDown, systemImage: "speaker.minus.fill", size: 36)
+                RemoteButton(.volumeDown, systemImage: "speaker.minus.fill", size: 36, repeatsOnHold: true)
                 RemoteButton(.mute, systemImage: "speaker.slash.fill", size: 36, allowsHold: false)
-                RemoteButton(.volumeUp, systemImage: "speaker.plus.fill", size: 36)
+                RemoteButton(.volumeUp, systemImage: "speaker.plus.fill", size: 36, repeatsOnHold: true)
             }
             if let app = store.currentApp {
                 Text(friendlyName(for: app))

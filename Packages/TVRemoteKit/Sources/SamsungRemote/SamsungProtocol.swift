@@ -16,6 +16,8 @@ public enum SamsungProtocol {
         .rewind: "KEY_REWIND", .fastForward: "KEY_FF",
         .info: "KEY_INFO", .guide: "KEY_GUIDE", .settings: "KEY_MENU", .input: "KEY_SOURCE",
         .channelUp: "KEY_CHUP", .channelDown: "KEY_CHDOWN",
+        .num0: "KEY_0", .num1: "KEY_1", .num2: "KEY_2", .num3: "KEY_3", .num4: "KEY_4",
+        .num5: "KEY_5", .num6: "KEY_6", .num7: "KEY_7", .num8: "KEY_8", .num9: "KEY_9",
     ]
 
     /// `wss://host:8002/api/v2/channels/samsung.remote.control?name=<base64>&token=<token>`
@@ -120,6 +122,8 @@ public enum SamsungProtocol {
         public var model: String
         public var macAddress: String?
         public var supportsToken: Bool
+        /// "on" / "standby" on 2019+ models; nil when the TV doesn't report it.
+        public var powerState: String?
 
         public init?(json data: Data) {
             guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -130,6 +134,7 @@ public enum SamsungProtocol {
             macAddress = device["wifiMac"] as? String
             let tokenFlag = device["TokenAuthSupport"] as? String
             supportsToken = tokenFlag?.lowercased() == "true"
+            powerState = (device["PowerState"] as? String)?.lowercased()
         }
     }
 

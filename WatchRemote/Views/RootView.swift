@@ -16,12 +16,12 @@ struct RootView: View {
         }
         .onOpenURL { _ in
             // Launched from the watch face complication: make sure we're connected.
-            store.connect()
+            store.activate()
         }
         .onChange(of: scenePhase) { newPhase in
             switch newPhase {
             case .active:
-                store.connect()
+                store.activate()
             case .background:
                 // watchOS tears sockets down in the background anyway; close cleanly.
                 store.disconnect()

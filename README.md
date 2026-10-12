@@ -13,7 +13,12 @@ also works on its own.
 - Play/pause, rewind, fast‑forward, previous/next, stop, mute
 - Power, input, settings and one‑tap app launching (the TV's own app list on Roku and LG)
 - Keyboard: type into search boxes and logins on the TV from the phone or by dictation on the watch
-- Watch face complication that opens the remote and shows the selected TV
+- Trackpad mode on the phone: swipe to move, tap to select; a volume slider where the TV reports its level
+- Number pad for channel entry, pinned favorite apps, a color per TV
+- Siri and Shortcuts: "Hey Siri, pause the TV with TV Remote"; actions also work from Lock Screen widgets
+- Watch face complication that opens the remote, shows the selected TV, and on watchOS 10 has a play/pause button
+- Double Tap on Apple Watch Series 9 and later plays or pauses
+- Opens on the TV that is actually on when you have several
 - Finds TVs on the network, pairs the way each brand expects, reconnects automatically
 
 ## Supported TVs
@@ -49,7 +54,7 @@ Packages/TVRemoteKit/
     RokuRemote/       Roku ECP
     SamsungRemote/    Samsung Tizen remote WebSocket
     LGRemote/         LG webOS SSAP
-  Tests/              64 unit tests; run on macOS or Linux with `swift test`
+  Tests/              66 unit tests; run on macOS or Linux with `swift test`
 Shared/               store, controller factory, discovery, pairing session,
                       WatchConnectivity sync, shared SwiftUI pieces
 PhoneRemote/          the iPhone app (SwiftUI)
@@ -79,8 +84,8 @@ project.yml           XcodeGen spec that produces the Xcode project
    change the identifiers: `PhoneRemote` from `com.example.TVRemote` to
    something unique, `WatchRemote` to that plus `.watchkitapp`, and
    `WatchComplication` to that plus `.watchkitapp.complication`. Also set
-   the App Group on the watch app and complication to `group.` plus your
-   phone identifier. The simplest way is to edit `project.yml` (bundle ids
+   the App Group on all three targets to `group.` plus your phone identifier;
+   it shares saved TVs and credentials with Siri and the complication. The simplest way is to edit `project.yml` (bundle ids
    and `APP_GROUP_ID`) and run `xcodegen generate` again.
 
 3. Choose the **PhoneRemote** scheme, select your iPhone and press Run. The
@@ -116,6 +121,32 @@ Google TV code.
 3. The remote screen appears. Add more TVs and switch between them from the
    last page.
 
+## Everyday extras
+
+- **Trackpad.** On the phone, switch the segmented control above the pad to
+  **Trackpad**. Swipe in any direction to move one step per 44 points; tap to
+  select. The choice is remembered.
+- **Volume.** Google TV and LG report the current level, so the phone shows a
+  slider you can drag to a level. Roku and Samsung don't, so holding the
+  volume buttons repeats instead.
+- **Numbers.** The `#` button on the phone, or **Numbers** on the watch's last
+  page, gives a channel keypad on TVs that have number keys.
+- **Favorites.** Touch and hold an app on the phone to pin it to the front of
+  the row; up to four per TV. Pinned apps show first on the watch too.
+- **Colors.** Touch and hold a TV in the phone's settings to give it a color.
+  The dot shows in the TV picker and the watch's TV list.
+- **Siri.** "Pause the TV with TV Remote", "Turn off the TV with TV Remote",
+  "Mute the TV with TV Remote". In the Shortcuts app the **Control TV** action
+  takes any key and an optional TV name, so you can build "Movie night" or add
+  a button to a Lock Screen widget. Siri uses the TV you used last unless you
+  name one.
+- **Double Tap.** On Apple Watch Series 9 / Ultra 2 and later, the Double Tap
+  gesture presses play/pause on the media page. Needs the watchOS 11 SDK
+  (Xcode 16) to build in.
+- **Reconnecting.** The watch drops the connection when the screen sleeps.
+  Taps made while **Reconnecting…** shows are kept and sent as soon as the link
+  is back, usually under a second.
+
 ## Keyboard and complication
 
 - **Keyboard.** Select a text field on the TV first (a search box, a login
@@ -126,7 +157,8 @@ Google TV code.
 - **Complication.** Long‑press the watch face, tap a complication slot and
   choose **TV Remote**. It shows the selected TV and whether it is on, and
   tapping it opens the remote. It is available in circular, corner,
-  rectangular and inline styles.
+  rectangular and inline styles. On watchOS 10 and later the rectangular one
+  carries a play/pause button that works without opening the app.
 
 ## Troubleshooting
 

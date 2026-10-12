@@ -35,6 +35,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>TVRemoteAppGroup</key>
+	<string>$(APP_GROUP_ID)</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>The remote finds and controls TVs on your home Wi‑Fi.</string>
 	<key>NSBonjourServices</key>

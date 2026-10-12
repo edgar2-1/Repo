@@ -24,6 +24,8 @@ final class LGTests: XCTestCase {
         XCTAssertEqual(text, #"{"id":"7","payload":{"id":"netflix"},"type":"request","uri":"ssap:\/\/system.launcher\/launch"}"#)
         XCTAssertEqual(LGProtocol.buttonMessage("UP"), "type:button\nname:UP\n\n")
         XCTAssertEqual(LGProtocol.buttonMap[.select], "ENTER")
+        XCTAssertEqual(LGProtocol.buttonMap[.num5], "5")
+        XCTAssertEqual(LGProtocol.Endpoint.setVolume, "ssap://audio/setVolume")
         XCTAssertTrue(LGProtocol.supportedKeys.contains(.power))
         XCTAssertFalse(LGProtocol.supportedKeys.contains(.assistant))
     }

@@ -10,6 +10,12 @@ public enum TVKey: String, Codable, CaseIterable, Sendable {
     case playPause, play, pause, stop, rewind, fastForward, previous, next
     case info, guide, settings, input, search, assistant
     case channelUp, channelDown
+    case num0, num1, num2, num3, num4, num5, num6, num7, num8, num9
+
+    public static let digits: [TVKey] = [.num0, .num1, .num2, .num3, .num4, .num5, .num6, .num7, .num8, .num9]
+
+    /// The digit for a number key, or nil.
+    public var digit: Int? { Self.digits.firstIndex(of: self) }
 
     public var isNavigation: Bool {
         switch self {

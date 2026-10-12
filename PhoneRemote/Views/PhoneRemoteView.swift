@@ -4,7 +4,9 @@ import TVRemoteCore
 /// Full-size remote for iPhone.
 struct PhoneRemoteView: View {
     @EnvironmentObject private var store: RemoteStore
+    @AppStorage("navigationMode") private var navigationMode = "dpad"
     @State private var showKeyboard = false
+    @State private var showNumbers = false
 
     var body: some View {
         ScrollView {
@@ -27,12 +29,32 @@ struct PhoneRemoteView: View {
                     .opacity(store.textEntry.isEmpty ? 0.3 : 1)
                 }
 
-                DPadCluster()
+                Picker("Navigation", selection: $navigationMode) {
+                    Text("D-pad").tag("dpad")
+                    Text("Trackpad").tag("trackpad")
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 40)
 
-                HStack(spacing: 40) {
+                if navigationMode == "trackpad" {
+                    TrackpadView()
+                } else {
+                    DPadCluster()
+                }
+
+                HStack(spacing: 28) {
                     RemoteButton(.back, systemImage: "arrow.uturn.backward", size: 60)
                     RemoteButton(.home, systemImage: "house.fill", size: 60)
                     RemoteButton(.menu, systemImage: "line.3.horizontal", size: 60)
+                    Button { showNumbers = true } label: {
+                        Image(systemName: "number")
+                            .font(.system(size: 25, weight: .semibold))
+                            .frame(width: 60, height: 60)
+                            .background(Circle().fill(Color.gray.opacity(0.3)))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!store.supportedKeys.contains(.num1))
+                    .opacity(store.supportedKeys.contains(.num1) ? 1 : 0.3)
                 }
 
                 MediaBar()
@@ -48,6 +70,17 @@ struct PhoneRemoteView: View {
         .sheet(isPresented: $showKeyboard) {
             NavigationStack { TextEntryView() }
                 .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showNumbers) {
+            NavigationStack {
+                NumberPadView()
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") { showNumbers = false }
+                        }
+                    }
+            }
+            .presentationDetents([.large])
         }
     }
 }
@@ -123,28 +156,55 @@ private struct MediaBar: View {
 
 private struct VolumeRow: View {
     @EnvironmentObject private var store: RemoteStore
+    @State private var sliderValue: Double = 0
+    @State private var editing = false
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             HStack(spacing: 18) {
-                RemoteButton(.volumeDown, systemImage: "speaker.minus.fill", size: 52)
+                RemoteButton(.volumeDown, systemImage: "speaker.minus.fill", size: 52, repeatsOnHold: true)
                 RemoteButton(.mute, systemImage: "speaker.slash.fill", size: 52, allowsHold: false)
-                RemoteButton(.volumeUp, systemImage: "speaker.plus.fill", size: 52)
-                RemoteButton(.channelDown, systemImage: "minus.rectangle", size: 52)
-                RemoteButton(.channelUp, systemImage: "plus.rectangle", size: 52)
+                RemoteButton(.volumeUp, systemImage: "speaker.plus.fill", size: 52, repeatsOnHold: true)
+                RemoteButton(.channelDown, systemImage: "minus.rectangle", size: 52, repeatsOnHold: true)
+                RemoteButton(.channelUp, systemImage: "plus.rectangle", size: 52, repeatsOnHold: true)
             }
             if let volume = store.volume, volume.max > 0 {
-                ProgressView(value: Double(volume.level), total: Double(max(volume.max, 1)))
+                // Google TV and LG report the level, so the slider is exact.
+                HStack(spacing: 10) {
+                    Image(systemName: volume.muted ? "speaker.slash.fill" : "speaker.wave.1.fill")
+                        .foregroundStyle(.secondary)
+                    Slider(value: $sliderValue, in: 0 ... Double(volume.max), step: 1) { isEditing in
+                        editing = isEditing
+                        if !isEditing { store.setVolume(Int(sliderValue)) }
+                    }
                     .tint(volume.muted ? .gray : .accentColor)
-                    .padding(.horizontal, 30)
+                    Text("\(Int(sliderValue))")
+                        .font(.footnote.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, alignment: .trailing)
+                }
+                .padding(.horizontal, 24)
+                .onAppear { sliderValue = Double(volume.level) }
+                .onChange(of: store.volume) { newValue in
+                    if !editing, let level = newValue?.level { sliderValue = Double(level) }
+                }
+            } else {
+                Text("Hold volume to repeat")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
         }
     }
 }
 
-/// Horizontal strip of app shortcuts the TV can launch.
+/// Horizontal strip of app shortcuts the TV can launch; pinned ones first.
 private struct AppsRow: View {
     @EnvironmentObject private var store: RemoteStore
+
+    private var orderedApps: [TVApp] {
+        let favorites = store.favoriteApps
+        return favorites + store.apps.filter { app in !favorites.contains(app) }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -162,23 +222,49 @@ private struct AppsRow: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
-                        ForEach(store.apps.prefix(40)) { app in
-                            Button { store.launch(app) } label: {
-                                VStack(spacing: 6) {
-                                    Image(systemName: app.symbol)
-                                        .font(.title2)
-                                        .frame(width: 56, height: 56)
-                                        .background(RoundedRectangle(cornerRadius: 14).fill(Color(.secondarySystemGroupedBackground)))
-                                    Text(app.name)
-                                        .font(.caption2)
-                                        .lineLimit(1)
-                                        .frame(width: 64)
-                                }
-                            }
-                            .buttonStyle(.plain)
+                        ForEach(orderedApps.prefix(40)) { app in
+                            AppChip(app: app, pinned: store.isFavorite(app))
                         }
                     }
                 }
+                Text("Touch and hold an app to pin it first.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+}
+
+private struct AppChip: View {
+    @EnvironmentObject private var store: RemoteStore
+    let app: TVApp
+    let pinned: Bool
+
+    var body: some View {
+        Button { store.launch(app) } label: {
+            VStack(spacing: 6) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: app.symbol)
+                        .font(.title2)
+                        .frame(width: 56, height: 56)
+                        .background(RoundedRectangle(cornerRadius: 14).fill(Color(.secondarySystemGroupedBackground)))
+                    if pinned {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.yellow)
+                            .padding(4)
+                    }
+                }
+                Text(app.name)
+                    .font(.caption2)
+                    .lineLimit(1)
+                    .frame(width: 64)
+            }
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button { store.toggleFavorite(app) } label: {
+                Label(pinned ? "Unpin" : "Pin to front", systemImage: pinned ? "star.slash" : "star")
             }
         }
     }
