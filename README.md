@@ -5,6 +5,7 @@ A small, private shopping app that lives in one HTML file. It keeps your pantry 
 ## What it does
 
 - **Shopping list** – add items by hand, or let them appear automatically when they are predicted to run out. Tap the circle when you buy something and the purchase is logged for today. "Still have some" pushes an item back a few days.
+- **Stock slider** – every item row has a three-position slider: Restocked (restarts the cycle from today), Used (let the prediction decide) and Buy soon (puts it on the list now).
 - **Pantry** – every item with its learned interval ("every 9 days"), last purchase, next due date and a status (overdue, due soon, stocked). Set a fixed interval on any item to override the learned one.
 - **Scan receipt** – photograph or upload a receipt (or paste its text). Item lines, quantities, prices, the store, date and total are extracted, matched to your pantry with fuzzy matching, and shown for review before saving. Matches you correct are remembered as aliases for next time.
 - **Spending** – spend this month and last 30 days, breakdown by category and store, and items whose price moved more than 10%.

@@ -92,7 +92,7 @@ label.f { display:grid; gap:4px; font-size:.85rem; color:var(--muted); font-weig
 
 /* item rows */
 .items { display:grid; gap:0; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); overflow:hidden }
-.item { display:grid; grid-template-columns:auto 1fr auto; gap:10px 12px; align-items:center; padding:10px 12px; border-top:1px solid var(--line) }
+.item { display:grid; grid-template-columns:auto 1fr auto auto; gap:10px 12px; align-items:center; padding:10px 12px; border-top:1px solid var(--line) }
 .item:first-child { border-top:0 }
 .item .name { font-weight:600; display:flex; gap:8px; align-items:center; flex-wrap:wrap }
 .item .meta { color:var(--muted); font-size:.82rem; margin-top:2px; font-variant-numeric:tabular-nums }
@@ -109,6 +109,16 @@ label.f { display:grid; gap:4px; font-size:.85rem; color:var(--muted); font-weig
 .chip.ok { background:var(--ok-soft); color:var(--ok) }
 .chip.listed { background:var(--accent-soft); color:var(--accent) }
 .item.clickable { cursor:pointer } .item.clickable:hover { background:var(--surface-2) }
+.lvl { display:grid; gap:1px; width:170px; font-size:.66rem; color:var(--muted); font-weight:600; letter-spacing:.02em; user-select:none }
+.lvl input { -webkit-appearance:none; appearance:none; width:100%; height:20px; background:transparent; margin:0; cursor:pointer; padding:0 }
+.lvl input::-webkit-slider-runnable-track { height:6px; border-radius:3px; background:linear-gradient(90deg, var(--ok) 0 34%, var(--soon) 34% 67%, var(--over) 67% 100%); opacity:.6 }
+.lvl input::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:18px; height:18px; border-radius:50%; background:var(--surface); border:3px solid var(--thumb); margin-top:-6px; box-shadow:0 1px 3px rgba(0,0,0,.35) }
+.lvl input::-moz-range-track { height:6px; border-radius:3px; background:linear-gradient(90deg, var(--ok) 0 34%, var(--soon) 34% 67%, var(--over) 67% 100%); opacity:.6 }
+.lvl input::-moz-range-thumb { width:12px; height:12px; border-radius:50%; background:var(--surface); border:3px solid var(--thumb); box-shadow:0 1px 3px rgba(0,0,0,.35) }
+.lvl .labels { display:flex; justify-content:space-between }
+.lvl .labels span { flex:1; text-align:center } .lvl .labels span:first-child { text-align:left } .lvl .labels span:last-child { text-align:right }
+.lvl .labels span.on { color:var(--fg) }
+.lvl.p0 { --thumb:var(--ok) } .lvl.p1 { --thumb:var(--soon) } .lvl.p2 { --thumb:var(--over) }
 
 .empty { padding:28px 18px; text-align:center; color:var(--muted); border:1px dashed var(--line); border-radius:var(--radius); display:grid; gap:10px; justify-items:center }
 .empty h3 { color:var(--fg) }
@@ -154,6 +164,7 @@ dialog .body { padding:18px; display:grid; gap:14px; max-height:80vh; overflow:a
 .kbd { font-family:var(--mono); font-size:.8rem; background:var(--surface-2); padding:1px 6px; border-radius:4px }
 @media (max-width: 520px) {
   .item { grid-template-columns:auto 1fr; }
+  .item .lvl { grid-column:2; width:100%; max-width:260px }
   .item .actions { grid-column:1 / -1; justify-content:flex-end }
   .bars div { grid-template-columns:90px 1fr auto }
 }
@@ -199,7 +210,7 @@ dialog .body { padding:18px; display:grid; gap:14px; max-height:80vh; overflow:a
       <option value="last">Sort by last bought</option>
     </select>
   </div>
-  <p class="small muted">Restock learns how often you buy each item from your purchase dates and receipts. After two purchases it predicts the next one. Set a fixed interval on any item to override.</p>
+  <p class="small muted">Restock learns how often you buy each item from your purchase dates and receipts. After two purchases it predicts the next one. Set a fixed interval on any item to override. The slider on each row is your say: Restocked restarts the cycle from today, Buy soon puts it on the list.</p>
   <div id="pantryBody"></div>
 </section>
 
@@ -381,7 +392,9 @@ function predict(item){
   const auto = gaps.length ? median(gaps) : null;
   const interval = item.intervalDays || auto;
   const source = item.intervalDays ? 'set' : (auto ? 'auto' : null);
-  const due = last && interval ? addDays(last, Math.max(1, Math.round(interval))) : null;
+  // "Restocked" on the slider restarts the cycle from that day, even without a logged purchase
+  const anchor = item.stockedOn && (!last || item.stockedOn > last) ? item.stockedOn : last;
+  const due = anchor && interval ? addDays(anchor, Math.max(1, Math.round(interval))) : null;
   const t = today();
   let status = 'unknown', daysLeft = null;
   if (due) {
@@ -389,6 +402,8 @@ function predict(item){
     const snoozed = item.snoozeUntil && item.snoozeUntil > t;
     status = snoozed ? 'ok' : daysLeft < 0 ? 'overdue' : daysLeft <= (state.settings.soonDays ?? 3) ? 'soon' : 'ok';
   }
+  if (item.level === 'out' && status !== 'overdue') status = 'soon';
+  if (item.level === 'stocked' && status === 'unknown') status = 'ok';
   const lastP = (item.purchases || []).filter(p => p.date === last).pop();
   return { last, lastP, interval, auto, source, due, daysLeft, status, count: dates.length };
 }
@@ -396,8 +411,22 @@ function statusLabel(p, item){
   if (item.onList) return p.status === 'overdue' ? 'on list · overdue' : 'on list';
   if (p.status === 'overdue') return `overdue ${relDays(p.daysLeft).replace('in ', '')}`.replace('overdue today', 'due today');
   if (p.status === 'soon') return `due ${relDays(p.daysLeft)}`;
-  if (p.status === 'ok') return `due ${relDays(p.daysLeft)}`;
+  if (p.status === 'ok') return p.due ? `due ${relDays(p.daysLeft)}` : 'stocked';
   return p.count === 1 ? 'needs one more purchase' : 'no purchases yet';
+}
+// slider position: 0 restocked, 1 in use, 2 buy soon. Set by the user, otherwise derived from the prediction.
+function levelPos(item, p){
+  if (item.level === 'stocked') return 0; if (item.level === 'out') return 2; if (item.level === 'used') return 1;
+  if (item.onList || p.status === 'overdue' || p.status === 'soon') return 2;
+  if (p.interval && p.daysLeft != null && p.daysLeft >= p.interval * 0.75) return 0;
+  return 1;
+}
+function setLevel(id, pos){
+  const it = findItem(id); if (!it) return;
+  if (pos === 0) { it.level = 'stocked'; it.stockedOn = today(); it.onList = false; it.snoozeUntil = null; }
+  else if (pos === 1) { it.level = 'used'; it.snoozeUntil = null; }
+  else { it.level = 'out'; it.snoozeUntil = null; }
+  save(); renderAll();
 }
 
 // ---------- text helpers ----------
@@ -515,7 +544,9 @@ function itemRow(it, p, mode){
   const lead = mode === 'list'
     ? `<button class="check" data-act="bought" data-id="${it.id}" title="Mark as bought today" aria-label="Mark ${esc(it.name)} as bought"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 8.5l3 3 7-7"/></svg></button>`
     : `<span class="stripe ${stripeCls}"></span>`;
-  return `<div class="item ${mode === 'pantry' ? 'clickable' : ''}" data-id="${it.id}">${lead}<div><div class="name">${esc(it.name)} <span class="chip">${esc(it.category)}</span> ${mode === 'pantry' ? chip : (p.status === 'overdue' ? chip : '')}</div><div class="meta">${bits.join(' · ') || 'no purchases yet'}</div></div><div class="actions">${actions}</div></div>`;
+  const pos = levelPos(it, p);
+  const slider = `<div class="lvl p${pos}" data-stop><input type="range" min="0" max="2" step="1" value="${pos}" data-level="${it.id}" aria-label="Stock level for ${esc(it.name)}: restocked, in use, or buy soon"><div class="labels"><span class="${pos === 0 ? 'on' : ''}">Restocked</span><span class="${pos === 1 ? 'on' : ''}">Used</span><span class="${pos === 2 ? 'on' : ''}">Buy soon</span></div></div>`;
+  return `<div class="item ${mode === 'pantry' ? 'clickable' : ''}" data-id="${it.id}">${lead}<div><div class="name">${esc(it.name)} <span class="chip">${esc(it.category)}</span> ${mode === 'pantry' ? chip : (p.status === 'overdue' ? chip : '')}</div><div class="meta">${bits.join(' · ') || 'no purchases yet'}</div></div>${slider}<div class="actions">${actions}</div></div>`;
 }
 function renderList(){
   const rows = state.items.map(i => ({ i, p: predict(i) }));
@@ -573,14 +604,14 @@ function findItem(id){ return state.items.find(i => i.id === id); }
 function addPurchase(item, p){ (item.purchases ||= []).push({ date: p.date || today(), qty: p.qty || 1, price: p.price ?? null, store: p.store || '' }); }
 function markBought(id){
   const it = findItem(id); if (!it) return;
-  const snapshot = { onList: it.onList, snoozeUntil: it.snoozeUntil, n: (it.purchases || []).length };
-  addPurchase(it, { date: today() }); it.onList = false; it.snoozeUntil = null; save(); renderAll();
-  toast(`${it.name} bought today`, 'Undo', () => { it.purchases.length = snapshot.n; it.onList = snapshot.onList; it.snoozeUntil = snapshot.snoozeUntil; save(); renderAll(); });
+  const snapshot = { onList: it.onList, snoozeUntil: it.snoozeUntil, level: it.level, stockedOn: it.stockedOn, n: (it.purchases || []).length };
+  addPurchase(it, { date: today() }); it.onList = false; it.snoozeUntil = null; it.level = 'stocked'; it.stockedOn = today(); save(); renderAll();
+  toast(`${it.name} bought today`, 'Undo', () => { it.purchases.length = snapshot.n; it.onList = snapshot.onList; it.snoozeUntil = snapshot.snoozeUntil; it.level = snapshot.level; it.stockedOn = snapshot.stockedOn; save(); renderAll(); });
 }
 function snooze(id){
   const it = findItem(id); if (!it) return; const p = predict(it);
   const days = Math.max(2, Math.round((p.interval || 7) * 0.3));
-  it.snoozeUntil = addDays(today(), days); it.onList = false; save(); renderAll();
+  it.snoozeUntil = addDays(today(), days); it.onList = false; it.level = 'used'; save(); renderAll();
   toast(`${it.name} pushed back ${days} days`, 'Undo', () => { it.snoozeUntil = null; save(); renderAll(); });
 }
 function toast(msg, actLabel, act){
@@ -608,8 +639,10 @@ document.body.addEventListener('click', e => {
     else if (act === 'sample') loadSample();
     return;
   }
+  if (e.target.closest('[data-stop]')) return;
   const row = e.target.closest('.item.clickable'); if (row) openDialog(row.dataset.id);
 });
+document.body.addEventListener('change', e => { if (e.target.dataset.level) setLevel(e.target.dataset.level, +e.target.value); });
 
 $('addForm').addEventListener('submit', e => {
   e.preventDefault();
@@ -783,7 +816,7 @@ $('rSave').addEventListener('click', () => {
     if (!it) { it = { id: uid(), name: l.name.trim(), category: l.cat || 'Other', intervalDays: null, aliases: [], purchases: [], onList: false }; state.items.push(it); created++; }
     else if (norm(it.name) !== norm(l.name) && !(it.aliases || []).some(a => norm(a) === norm(l.name))) { (it.aliases ||= []).push(l.name.trim()); if (it.aliases.length > 12) it.aliases.shift(); }
     addPurchase(it, { date, qty: l.qty, price: l.price > 0 ? +(l.price / (l.qty || 1)).toFixed(2) : null, store });
-    it.onList = false; it.snoozeUntil = null;
+    it.onList = false; it.snoozeUntil = null; it.level = 'stocked'; it.stockedOn = date > (it.stockedOn || '') ? date : it.stockedOn;
   }
   state.receipts.push({ id: uid(), date, store, total: parseFloat($('rTotal').value) || null, items: on.length });
   save(); renderAll(); resetScan();
