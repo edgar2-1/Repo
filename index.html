@@ -677,7 +677,7 @@ async function getWorker(){
   return worker;
 }
 // The worker looks for language data in IndexedDB (idb-keyval, key "./eng.traineddata") before fetching
-// "<langPath>/eng.traineddata.gz". Some hosts cannot serve a .gz file, so the page fills that cache itself.
+// "<langPath>/eng.traineddata.gz". Some hosts cannot serve a .gz file (the artifact host serves it under a .wasm name), so the page fills that cache itself.
 async function primeLanguageCache(){
   const DB = 'keyval-store', STORE = 'keyval', KEYNAME = './eng.traineddata';
   try {
@@ -685,7 +685,7 @@ async function primeLanguageCache(){
     const have = await new Promise((res, rej) => { const q = db.transaction(STORE, 'readonly').objectStore(STORE).get(KEYNAME); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
     if (have) { db.close(); return; }
     let bytes = null;
-    for (const u of ['vendor/eng.traineddata.gz', 'vendor/eng.traineddata.gz.txt']) { try { const r = await fetch(u); if (r.ok) { bytes = await r.arrayBuffer(); break; } } catch (e) {} }
+    for (const u of ['vendor/eng.traineddata.gz', 'vendor/eng.traineddata.gz.wasm']) { try { const r = await fetch(u); if (r.ok) { bytes = await r.arrayBuffer(); break; } } catch (e) {} }
     if (!bytes) { db.close(); return; }
     if (typeof DecompressionStream === 'function') { try { bytes = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(); } catch (e) {} }
     await new Promise((res, rej) => { const tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).put(new Uint8Array(bytes), KEYNAME); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
