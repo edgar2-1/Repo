@@ -1098,7 +1098,9 @@ function makeICS(day, time){
 }
 $('shopDay').addEventListener('change', () => { state.settings.shopDay = +$('shopDay').value; save(); });
 $('shopTime').addEventListener('change', () => { state.settings.shopTime = $('shopTime').value; save(); });
+const IN_PREVIEW = /claude|anthropic/i.test(location.hostname);
 $('icsBtn').addEventListener('click', () => {
+  if (IN_PREVIEW) { toast("This preview can't open Calendar files. Use Restock from your Home Screen."); return; }
   const ics = makeICS(+$('shopDay').value, $('shopTime').value);
   try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })); a.download = 'restock-shopping-day.ics'; document.body.appendChild(a); a.click(); a.remove(); toast('Open the file to add it to Calendar'); }
   catch (e) { toast('Your browser blocked the calendar file.'); }
