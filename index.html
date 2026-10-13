@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- page:start -->
+<title>Restock</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column, 760px max, sticky header with status pills, tab strip, content cards only where an object needs edges. */
+:root {
+  --bg:#F3F6F2; --surface:#FFFFFF; --surface-2:#E9EFE9; --fg:#1B2620; --muted:#5C6A62; --line:#D3DBD3;
+  --accent:#2C6A4D; --accent-ink:#FFFFFF; --accent-soft:#DCEBE1;
+  --ok:#2C6A4D; --ok-soft:#DCEBE1; --soon:#8E6210; --soon-soft:#F7E9C5; --over:#A8392A; --over-soft:#F6DBD5;
+  --display:'Fraunces',Georgia,'Times New Roman',serif;
+  --body:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --radius:10px; --shadow:0 1px 2px rgba(27,38,32,.08), 0 4px 14px rgba(27,38,32,.06);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg:#131A16; --surface:#1C2520; --surface-2:#243029; --fg:#E7ECE8; --muted:#9BA89F; --line:#2F3B35;
+  --accent:#7FC69D; --accent-ink:#0F1A14; --accent-soft:#213A2C;
+  --ok:#7FC69D; --ok-soft:#213A2C; --soon:#E3B55C; --soon-soft:#3B2F12; --over:#F3907F; --over-soft:#43201A;
+  --shadow:0 1px 2px rgba(0,0,0,.35), 0 4px 14px rgba(0,0,0,.25); color-scheme:dark } }
+:root[data-theme="dark"] {
+  --bg:#131A16; --surface:#1C2520; --surface-2:#243029; --fg:#E7ECE8; --muted:#9BA89F; --line:#2F3B35;
+  --accent:#7FC69D; --accent-ink:#0F1A14; --accent-soft:#213A2C;
+  --ok:#7FC69D; --ok-soft:#213A2C; --soon:#E3B55C; --soon-soft:#3B2F12; --over:#F3907F; --over-soft:#43201A;
+  --shadow:0 1px 2px rgba(0,0,0,.35), 0 4px 14px rgba(0,0,0,.25); color-scheme:dark }
+
+* { box-sizing:border-box }
+[hidden] { display:none !important }
+html, body { height:100% }
+body { margin:0; background:var(--bg); color:var(--fg); font-family:var(--body); font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased }
+h1,h2,h3 { font-family:var(--display); font-weight:600; margin:0; text-wrap:balance; line-height:1.15 }
+h2 { font-size:1.35rem } h3 { font-size:1.05rem }
+p { margin:0 }
+button, input, select, textarea { font:inherit; color:inherit }
+button { cursor:pointer }
+a { color:var(--accent) }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important } }
+
+.wrap { max-width:760px; margin-inline:auto; padding-inline:16px }
+.top { position:sticky; top:env(safe-area-inset-top, 0px); z-index:5; background:var(--bg); border-bottom:1px solid var(--line) }
+.top .wrap { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; padding-block:12px 10px }
+.brand { display:flex; align-items:baseline; gap:10px }
+.brand h1 { font-size:1.6rem; font-weight:700; letter-spacing:-.01em }
+.brand small { color:var(--muted); font-size:.8rem; text-transform:uppercase; letter-spacing:.08em }
+.pills { display:flex; gap:8px; flex-wrap:wrap; margin-left:auto }
+.pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:.8rem; font-weight:600; background:var(--surface-2); color:var(--muted); font-variant-numeric:tabular-nums }
+.pill b { font-size:.95rem; color:var(--fg) }
+.pill.over { background:var(--over-soft); color:var(--over) } .pill.over b { color:var(--over) }
+.pill.soon { background:var(--soon-soft); color:var(--soon) } .pill.soon b { color:var(--soon) }
+.pill.ok { background:var(--ok-soft); color:var(--ok) } .pill.ok b { color:var(--ok) }
+
+.tabs { display:flex; gap:2px; padding-block:6px 0; overflow-x:auto; scrollbar-width:none }
+.tabs::-webkit-scrollbar { display:none }
+.tabs button { background:none; border:0; border-bottom:2px solid transparent; padding:8px 12px; color:var(--muted); font-weight:600; white-space:nowrap; border-radius:6px 6px 0 0 }
+.tabs button[aria-selected="true"] { color:var(--fg); border-bottom-color:var(--accent) }
+.tabs button:hover { color:var(--fg) }
+
+main .wrap { padding-block:18px 48px; display:grid; gap:18px }
+
+.stack { display:grid; gap:14px }
+.row { display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+.row > * { min-width:0 }
+.grow { flex:1 1 160px }
+.muted { color:var(--muted) }
+.small { font-size:.85rem }
+.mono { font-family:var(--mono); font-variant-numeric:tabular-nums }
+.eyebrow { font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600 }
+.sec-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap }
+
+input[type=text], input[type=number], input[type=date], input[type=search], select, textarea {
+  background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:8px 10px; width:100%; min-width:0 }
+input::placeholder, textarea::placeholder { color:var(--muted); opacity:.8 }
+textarea { font-family:var(--mono); font-size:.85rem; line-height:1.4; min-height:120px; resize:vertical }
+label.f { display:grid; gap:4px; font-size:.85rem; color:var(--muted); font-weight:500 }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border:1px solid var(--line); background:var(--surface); border-radius:8px; padding:8px 14px; font-weight:600; white-space:nowrap }
+.btn:hover { border-color:var(--muted) }
+.btn.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-ink) }
+.btn.primary:hover { filter:brightness(1.07) }
+.btn.danger { color:var(--over); border-color:var(--over) }
+.btn.quiet { border-color:transparent; background:transparent; color:var(--muted); padding-inline:8px }
+.btn.quiet:hover { color:var(--fg); background:var(--surface-2) }
+.btn.sm { padding:5px 10px; font-size:.85rem }
+.btn:disabled { opacity:.5; cursor:default }
+
+.card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow) }
+.card.flat { box-shadow:none }
+
+/* item rows */
+.items { display:grid; gap:0; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); overflow:hidden }
+.item { display:grid; grid-template-columns:auto 1fr auto; gap:10px 12px; align-items:center; padding:10px 12px; border-top:1px solid var(--line) }
+.item:first-child { border-top:0 }
+.item .name { font-weight:600; display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+.item .meta { color:var(--muted); font-size:.82rem; margin-top:2px; font-variant-numeric:tabular-nums }
+.item .actions { display:flex; gap:4px }
+.check { width:30px; height:30px; border-radius:50%; border:2px solid var(--line); background:var(--surface); display:inline-flex; align-items:center; justify-content:center; color:var(--accent-ink); padding:0; flex:none }
+.check:hover { border-color:var(--accent) }
+.check svg { opacity:0; width:16px; height:16px }
+.check:hover svg { opacity:.5; color:var(--accent) }
+.stripe { width:4px; align-self:stretch; border-radius:2px; background:var(--line) }
+.stripe.over { background:var(--over) } .stripe.soon { background:var(--soon) } .stripe.ok { background:var(--ok) }
+.chip { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.72rem; font-weight:600; background:var(--surface-2); color:var(--muted); letter-spacing:.02em }
+.chip.over { background:var(--over-soft); color:var(--over) }
+.chip.soon { background:var(--soon-soft); color:var(--soon) }
+.chip.ok { background:var(--ok-soft); color:var(--ok) }
+.chip.listed { background:var(--accent-soft); color:var(--accent) }
+.item.clickable { cursor:pointer } .item.clickable:hover { background:var(--surface-2) }
+
+.empty { padding:28px 18px; text-align:center; color:var(--muted); border:1px dashed var(--line); border-radius:var(--radius); display:grid; gap:10px; justify-items:center }
+.empty h3 { color:var(--fg) }
+
+/* scan */
+.drop { border:2px dashed var(--line); border-radius:var(--radius); padding:22px 16px; text-align:center; display:grid; gap:10px; justify-items:center; background:var(--surface) }
+.drop.over { border-color:var(--accent); background:var(--accent-soft) }
+.drop input { display:none }
+.preview { max-height:260px; border-radius:8px; border:1px solid var(--line); max-width:100% }
+.progress { height:8px; border-radius:4px; background:var(--surface-2); overflow:hidden }
+.progress i { display:block; height:100%; width:0; background:var(--accent); transition:width .2s }
+.rtable { width:100%; border-collapse:collapse; font-size:.9rem }
+.rtable th { text-align:left; font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); padding:6px 6px; border-bottom:1px solid var(--line) }
+.rtable td { padding:6px 6px; border-bottom:1px solid var(--line); vertical-align:middle }
+.rtable input[type=text] { min-width:120px }
+.rtable input[type=number] { width:72px }
+.rtable select { min-width:140px }
+.rtable tr.off td { opacity:.45 }
+.tscroll { overflow-x:auto }
+details summary { cursor:pointer; color:var(--muted); font-weight:600; font-size:.85rem }
+pre.raw { font-family:var(--mono); font-size:.78rem; white-space:pre-wrap; word-break:break-word; background:var(--surface-2); padding:10px; border-radius:8px; max-height:240px; overflow:auto; margin:8px 0 0 }
+
+/* dialog */
+dialog { border:1px solid var(--line); border-radius:14px; background:var(--surface); color:var(--fg); padding:0; width:min(560px, calc(100vw - 32px)); box-shadow:var(--shadow) }
+dialog::backdrop { background:rgba(10,16,12,.45) }
+dialog .body { padding:18px; display:grid; gap:14px; max-height:80vh; overflow:auto }
+.hist { display:grid; gap:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:.88rem }
+.hist div { display:grid; grid-template-columns:1fr auto auto auto; gap:10px; align-items:center; padding:6px 10px; border-top:1px solid var(--line); font-variant-numeric:tabular-nums }
+.hist div:first-child { border-top:0 }
+.hist .store { color:var(--muted); font-size:.8rem }
+
+/* insights */
+.tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px }
+.tile { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:12px }
+.tile .v { font-family:var(--display); font-size:1.5rem; font-weight:600; font-variant-numeric:tabular-nums }
+.tile .l { color:var(--muted); font-size:.8rem }
+.bars { display:grid; gap:6px; font-size:.85rem }
+.bars div { display:grid; grid-template-columns:120px 1fr auto; gap:8px; align-items:center; font-variant-numeric:tabular-nums }
+.bars i { display:block; height:10px; background:var(--accent); border-radius:3px; min-width:2px }
+
+#toast { position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%); background:var(--fg); color:var(--bg); padding:10px 14px; border-radius:10px; display:flex; gap:12px; align-items:center; box-shadow:var(--shadow); z-index:20; max-width:calc(100vw - 32px); font-size:.9rem }
+#toast button { background:none; border:0; color:inherit; font-weight:700; text-decoration:underline; padding:0 }
+.kbd { font-family:var(--mono); font-size:.8rem; background:var(--surface-2); padding:1px 6px; border-radius:4px }
+@media (max-width: 520px) {
+  .item { grid-template-columns:auto 1fr; }
+  .item .actions { grid-column:1 / -1; justify-content:flex-end }
+  .bars div { grid-template-columns:90px 1fr auto }
+}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><h1>Restock</h1><small>pantry &amp; receipts</small></div>
+    <div class="pills" id="pills"></div>
+  </div>
+  <div class="wrap" style="padding-block:0">
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="list" aria-selected="true">Shopping list</button>
+      <button role="tab" data-tab="pantry" aria-selected="false">Pantry</button>
+      <button role="tab" data-tab="scan" aria-selected="false">Scan receipt</button>
+      <button role="tab" data-tab="insights" aria-selected="false">Spending</button>
+      <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
+    </nav>
+  </div>
+</header>
+
+<main><div class="wrap">
+
+<section id="tab-list" class="stack">
+  <form id="addForm" class="card flat" autocomplete="off">
+    <div class="row">
+      <input type="text" id="addName" class="grow" placeholder="Add to list, e.g. oat milk" aria-label="Item name" required>
+      <select id="addCat" aria-label="Category"></select>
+      <input type="number" id="addEvery" min="1" max="365" placeholder="every ? days" aria-label="Runs out every N days" style="width:120px">
+      <button class="btn primary" type="submit">Add</button>
+    </div>
+  </form>
+  <div id="listBody" class="stack"></div>
+</section>
+
+<section id="tab-pantry" class="stack" hidden>
+  <div class="row">
+    <input type="search" id="pantrySearch" class="grow" placeholder="Search pantry" aria-label="Search pantry">
+    <select id="pantrySort" aria-label="Sort">
+      <option value="due">Sort by next due</option>
+      <option value="name">Sort by name</option>
+      <option value="cat">Sort by category</option>
+      <option value="last">Sort by last bought</option>
+    </select>
+  </div>
+  <p class="small muted">Restock learns how often you buy each item from your purchase dates and receipts. After two purchases it predicts the next one. Set a fixed interval on any item to override.</p>
+  <div id="pantryBody"></div>
+</section>
+
+<section id="tab-scan" class="stack" hidden>
+  <div id="scanStep1" class="stack">
+    <div class="drop" id="drop">
+      <input type="file" id="file" accept="image/*" capture="environment">
+      <h3>Scan a receipt</h3>
+      <p class="muted small">Take a photo or choose an image. Flat, well lit, text filling the frame works best.</p>
+      <div class="row" style="justify-content:center">
+        <button class="btn primary" type="button" id="pickBtn">Choose photo</button>
+        <button class="btn" type="button" id="pasteBtn">Paste receipt text instead</button>
+      </div>
+      <img id="preview" class="preview" alt="Receipt preview" hidden>
+    </div>
+    <div id="pasteBox" class="stack" hidden>
+      <label class="f">Receipt text, one line per item<textarea id="pasteText" placeholder="TRADER JOE'S
+10/09/2026
+ORGANIC BANANAS        1.49
+WHOLE MILK 1 GAL       3.99
+TOTAL                  5.48"></textarea></label>
+      <div class="row"><button class="btn primary" type="button" id="parsePasteBtn">Read text</button></div>
+    </div>
+    <div id="ocrStatus" class="stack" hidden>
+      <div class="progress"><i id="ocrBar"></i></div>
+      <p class="small muted" id="ocrMsg">Starting the reader…</p>
+    </div>
+  </div>
+
+  <div id="scanStep2" class="stack" hidden>
+    <div class="sec-head"><h2>Check what was read</h2><button class="btn quiet sm" type="button" id="scanBack">Start over</button></div>
+    <p class="small muted">Fix names and prices, untick anything that is not a grocery item, and match each line to a pantry item. New items are created for anything left as "New item". Matches you make are remembered for next time.</p>
+    <div class="row">
+      <label class="f grow">Store<input type="text" id="rStore" placeholder="Store name"></label>
+      <label class="f">Date<input type="date" id="rDate"></label>
+      <label class="f">Receipt total<input type="number" id="rTotal" step="0.01" min="0" placeholder="0.00" style="width:110px"></label>
+    </div>
+    <div class="tscroll card flat" style="padding:0">
+      <table class="rtable">
+        <thead><tr><th></th><th>Item</th><th>Qty</th><th>Line total</th><th>Category</th><th>Pantry match</th></tr></thead>
+        <tbody id="rRows"></tbody>
+      </table>
+    </div>
+    <div class="row">
+      <button class="btn sm" type="button" id="rAddLine">Add a line</button>
+      <span class="grow"></span>
+      <span class="small muted" id="rSummary"></span>
+      <button class="btn primary" type="button" id="rSave">Save purchases</button>
+    </div>
+    <details><summary>Raw text from the reader</summary><pre class="raw" id="rRaw"></pre></details>
+  </div>
+</section>
+
+<section id="tab-insights" class="stack" hidden>
+  <div id="insightsBody" class="stack"></div>
+</section>
+
+<section id="tab-settings" class="stack" hidden>
+  <div class="card flat stack">
+    <h3>Reminders</h3>
+    <label class="f">Show an item as "due soon" this many days before it is predicted to run out
+      <input type="number" id="soonDays" min="0" max="30" style="width:100px"></label>
+  </div>
+  <div class="card flat stack">
+    <h3>Backup</h3>
+    <p class="small muted">Everything is stored in this browser only. Copy a backup to move it to another device or keep it safe.</p>
+    <div class="row">
+      <button class="btn" type="button" id="exportBtn">Copy backup to clipboard</button>
+      <button class="btn" type="button" id="importToggle">Restore from backup</button>
+    </div>
+    <textarea id="exportBox" hidden readonly aria-label="Backup data"></textarea>
+    <div id="importBox" class="stack" hidden>
+      <textarea id="importText" placeholder="Paste a backup here"></textarea>
+      <div class="row"><button class="btn primary" type="button" id="importBtn">Restore</button><span class="small muted">This replaces what is here now.</span></div>
+    </div>
+  </div>
+  <div class="card flat stack">
+    <h3>Data</h3>
+    <div class="row">
+      <button class="btn" type="button" id="sampleBtn">Load example pantry</button>
+      <button class="btn danger" type="button" id="clearBtn">Delete everything</button>
+    </div>
+    <p class="small muted" id="dataNote"></p>
+  </div>
+  <p class="small muted">Receipt reading runs on this device with Tesseract OCR. Photos never leave your browser.</p>
+</section>
+
+</div></main>
+
+<div id="toast" hidden><span id="toastMsg"></span><button type="button" id="toastAct" hidden></button></div>
+
+<dialog id="itemDialog">
+  <form class="body" id="itemForm" method="dialog">
+    <div class="sec-head"><h2 id="dTitle">Edit item</h2><button class="btn quiet sm" type="button" id="dClose">Close</button></div>
+    <div class="row">
+      <label class="f grow">Name<input type="text" id="dName" required></label>
+      <label class="f">Category<select id="dCat"></select></label>
+    </div>
+    <div class="row">
+      <label class="f">Runs out every<div class="row" style="flex-wrap:nowrap"><input type="number" id="dEvery" min="1" max="365" placeholder="auto" style="width:90px"><span class="small muted">days</span></div></label>
+      <p class="small muted grow" id="dAuto"></p>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <span class="small muted" id="dAliases"></span>
+    </div>
+    <div class="stack" style="gap:6px">
+      <div class="sec-head"><span class="eyebrow">Purchase history</span><button class="btn sm" type="button" id="dAddPurchase">Add purchase</button></div>
+      <div id="dAddPurchaseBox" class="row" hidden>
+        <input type="date" id="dpDate" aria-label="Date">
+        <input type="number" id="dpQty" min="1" value="1" style="width:70px" aria-label="Quantity">
+        <input type="number" id="dpPrice" step="0.01" min="0" placeholder="price each" style="width:100px" aria-label="Price each">
+        <input type="text" id="dpStore" placeholder="store" class="grow" aria-label="Store">
+        <button class="btn sm primary" type="button" id="dpSave">Add</button>
+      </div>
+      <div class="hist" id="dHist"></div>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <button class="btn danger sm" type="button" id="dDelete">Delete item</button>
+        <span id="dDeleteConfirm" hidden class="row"><span class="small">Sure?</span><button class="btn danger sm" type="button" id="dDeleteYes">Yes, delete</button></span>
+      </div>
+      <div class="row">
+        <button class="btn" type="button" id="dToList">Add to list</button>
+        <button class="btn primary" type="submit">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<script src="vendor/tesseract.min.js" onerror="var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js';document.head.appendChild(s)"></script>
+<script>
+(() => {
+'use strict';
+// ---------- constants ----------
+const KEY = 'restock.v1';
+const CATS = ['Produce','Dairy & eggs','Meat & fish','Bakery','Pantry','Frozen','Drinks','Snacks','Household','Personal care','Pets & baby','Other'];
+const CAT_WORDS = {
+  'Produce': ['banana','apple','orange','lemon','lime','avocado','tomato','onion','garlic','potato','carrot','lettuce','spinach','kale','pepper','cucumber','berry','berries','strawberr','grape','melon','broccoli','celery','mushroom','salad','herb','cilantro','parsley','ginger','pear','peach','plum','mango','squash','zucchini','corn','beans','cabbage'],
+  'Dairy & eggs': ['milk','egg','cheese','yogurt','yoghurt','butter','cream','cheddar','mozzarella','parmesan','kefir','cottage'],
+  'Meat & fish': ['chicken','beef','pork','turkey','salmon','tuna','shrimp','fish','steak','bacon','sausage','ham','ground','lamb','deli'],
+  'Bakery': ['bread','bagel','tortilla','bun','roll','muffin','croissant','pita','naan','loaf','baguette'],
+  'Pantry': ['rice','pasta','flour','sugar','oil','olive','vinegar','salt','spice','cereal','oat','granola','honey','peanut','jam','sauce','soup','broth','stock','can ','canned','lentil','chickpea','quinoa','noodle','ketchup','mustard','mayo','syrup','coffee','tea ','cocoa','baking','vanilla','nut','almond','walnut'],
+  'Frozen': ['frozen','ice cream','pizza','frz','fzn','popsicle'],
+  'Drinks': ['water','juice','soda','cola','beer','wine','kombucha','sparkling','seltzer','drink','lemonade'],
+  'Snacks': ['chip','cracker','cookie','chocolate','candy','pretzel','popcorn','bar ','bars','snack','trail mix'],
+  'Household': ['paper towel','toilet','tissue','detergent','soap','sponge','trash','bag','foil','wrap','cleaner','bleach','dish','laundry','battery','bulb','napkin'],
+  'Personal care': ['shampoo','conditioner','toothpaste','toothbrush','deodorant','razor','lotion','floss','sunscreen','vitamin','tampon','pad'],
+  'Pets & baby': ['dog','cat ','litter','diaper','wipes','formula','kibble','pet'],
+};
+const SKIP_RE = /\b(sub\s?total|total|tax|change|cash|visa|master\s?card|mastercard|m\/c|amex|discover|debit|credit|balance|tender|amount|approved|approval|auth|thank|cashier|register|reg\b|trans|terminal|card|account|acct|savings|you saved|saved|coupon|discount|loyalty|points|member|rewards|www\.|http|\.com|invoice|order|receipt|date|time|phone|tel\b|items?\s+sold|item count|count|qty|price|description|store|ref|chip|contactless|signature|customer copy|merchant|entry|aid|tvr|tsi|arqc|return policy|survey|welcome|open|hours)\b/i;
+const PRICE_RE = /(?:^|\s)(-?)\$?\s?(\d{1,4})[.,](\d{2})\s*(?:[A-Z]{1,2}|\*|-)?\s*$/;
+
+// ---------- state ----------
+let state = load() || { items: [], receipts: [], settings: { soonDays: 3 } };
+let worker = null, scanDraft = null, pendingUndo = null, dialogItemId = null;
+
+function load(){ try { const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
+// ---------- dates ----------
+const pad = n => String(n).padStart(2, '0');
+const toISO = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const today = () => toISO(new Date());
+const parseISO = s => new Date(s + 'T00:00:00');
+const addDays = (iso, n) => { const d = parseISO(iso); d.setDate(d.getDate() + n); return toISO(d); };
+const daysBetween = (a, b) => Math.round((parseISO(b) - parseISO(a)) / 864e5);
+const fmtDate = iso => parseISO(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+const money = n => (n == null || isNaN(n)) ? '' : '$' + Number(n).toFixed(2);
+function relDays(n){ if (n === 0) return 'today'; if (n === 1) return 'tomorrow'; if (n === -1) return 'yesterday'; return n > 0 ? `in ${n} days` : `${-n} days ago`; }
+function fmtEvery(n){ if (!n) return ''; const r = Math.round(n); if (r % 7 === 0 && r >= 14) return `every ${r/7} weeks`; if (r === 7) return 'weekly'; return `every ${r} days`; }
+
+// ---------- predictions ----------
+function median(a){ const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2; }
+function predict(item){
+  const dates = [...new Set((item.purchases || []).map(p => p.date))].sort();
+  const last = dates[dates.length - 1] || null;
+  const gaps = []; for (let i = 1; i < dates.length; i++) gaps.push(daysBetween(dates[i-1], dates[i]));
+  const auto = gaps.length ? median(gaps) : null;
+  const interval = item.intervalDays || auto;
+  const source = item.intervalDays ? 'set' : (auto ? 'auto' : null);
+  const due = last && interval ? addDays(last, Math.max(1, Math.round(interval))) : null;
+  const t = today();
+  let status = 'unknown', daysLeft = null;
+  if (due) {
+    daysLeft = daysBetween(t, due);
+    const snoozed = item.snoozeUntil && item.snoozeUntil > t;
+    status = snoozed ? 'ok' : daysLeft < 0 ? 'overdue' : daysLeft <= (state.settings.soonDays ?? 3) ? 'soon' : 'ok';
+  }
+  const lastP = (item.purchases || []).filter(p => p.date === last).pop();
+  return { last, lastP, interval, auto, source, due, daysLeft, status, count: dates.length };
+}
+function statusLabel(p, item){
+  if (item.onList) return p.status === 'overdue' ? 'on list · overdue' : 'on list';
+  if (p.status === 'overdue') return `overdue ${relDays(p.daysLeft).replace('in ', '')}`.replace('overdue today', 'due today');
+  if (p.status === 'soon') return `due ${relDays(p.daysLeft)}`;
+  if (p.status === 'ok') return `due ${relDays(p.daysLeft)}`;
+  return p.count === 1 ? 'needs one more purchase' : 'no purchases yet';
+}
+
+// ---------- text helpers ----------
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+function titleCase(s){ return s.toLowerCase().replace(/(^|[\s(\/-])([a-z])/g, (m, a, c) => a + c.toUpperCase()).replace(/\b(And|Of|With|In)\b/g, w => w.toLowerCase()); }
+function guessCategory(name){
+  const n = ' ' + norm(name) + ' ';
+  for (const cat of Object.keys(CAT_WORDS)) for (const w of CAT_WORDS[cat]) if (n.includes(w.trim().length === w.length ? w : w)) { if (n.includes(w)) return cat; }
+  return 'Other';
+}
+function tokenMatch(a, b){ if (a === b) return true; if (a.length >= 3 && b.length >= 3) return a.startsWith(b) || b.startsWith(a); return false; }
+function matchScore(receiptName, item){
+  const r = norm(receiptName), n = norm(item.name);
+  if (!r || !n) return 0;
+  if (r === n) return 1;
+  if ((item.aliases || []).some(a => norm(a) === r)) return 1;
+  const rt = r.split(' '), nt = n.split(' ');
+  let hits = 0; for (const t of nt) if (rt.some(x => tokenMatch(x, t))) hits++;
+  let hits2 = 0; for (const t of rt) if (nt.some(x => tokenMatch(x, t))) hits2++;
+  const s = Math.max(hits / nt.length, hits2 / rt.length) * 0.9;
+  return (r.includes(n) || n.includes(r)) ? Math.max(s, 0.8) : s;
+}
+function bestMatches(name){
+  return state.items.map(it => ({ it, s: matchScore(name, it) })).filter(m => m.s >= 0.5).sort((a, b) => b.s - a.s);
+}
+
+// ---------- receipt parsing ----------
+function fixPriceToken(line){
+  // OCR confuses O/0, l/1, S/5 inside the trailing price token only
+  return line.replace(/(\S+)\s*([A-Z]{0,2})$/, (m, tok, code) => {
+    if (!/\d/.test(tok) || !/[.,]/.test(tok)) return m;
+    const fixed = tok.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/S/g, '5').replace(/B/g, '8');
+    return fixed + (code ? ' ' + code : '');
+  });
+}
+function parseDate(text){
+  const t = today();
+  let m, best = null;
+  const iso = /\b(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})\b/g;
+  while ((m = iso.exec(text))) { const d = `${m[1]}-${pad(m[2])}-${pad(m[3])}`; if (valid(d)) { best = d; break; } }
+  if (!best) {
+    const us = /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g;
+    while ((m = us.exec(text))) {
+      let a = +m[1], b = +m[2], y = +m[3]; if (y < 100) y += 2000;
+      let mo = a, da = b; if (a > 12 && b <= 12) { mo = b; da = a; }
+      const d = `${y}-${pad(mo)}-${pad(da)}`; if (valid(d)) { best = d; break; }
+    }
+  }
+  return best;
+  function valid(d){ const dt = parseISO(d); if (isNaN(dt) || toISO(dt) !== d) return false; return d <= t && daysBetween(d, t) < 1100; }
+}
+function parseReceipt(text){
+  const lines = text.split(/\r?\n/).map(l => l.replace(/[|¦]/g, ' ').replace(/\s+/g, ' ').trim()).filter(l => l.length > 1);
+  const items = []; let store = null, total = null, pendingName = null, pendingQty = null;
+  const near = (a, b) => Math.abs(a - b) <= 0.02;
+  for (const raw of lines) {
+    const line = fixPriceToken(raw);
+    // a bare quantity line such as "2 @ 3.49" or "3 x 1.29" belongs to the neighbouring item whose price matches
+    const ql = line.match(/^(\d{1,3})\s*(?:@|x)\s*\$?(\d+[.,]\d{2})(?:\s*(?:\/|ea|each)\s*\w*)?$/i);
+    if (ql) {
+      const q = +ql[1], unit = parseFloat(ql[2].replace(',', '.')), prev = items[items.length - 1];
+      if (prev && prev.qty === 1 && near(prev.price, q * unit)) prev.qty = q; else pendingQty = { q, unit };
+      pendingName = null; continue;
+    }
+    const m = line.match(PRICE_RE);
+    if (!m) {
+      if (SKIP_RE.test(line)) { pendingName = null; continue; }
+      const letters = (line.match(/[A-Za-z]/g) || []).length;
+      if (!store && items.length === 0 && letters >= 3 && letters >= line.length * 0.5 && line.length <= 40) { store = titleCase(line.replace(/[^A-Za-z0-9&' .-]/g, '').trim()); continue; }
+      if (letters >= 3) pendingName = line; else pendingName = null;
+      continue;
+    }
+    const neg = m[1] === '-';
+    const price = parseFloat(m[2] + '.' + m[3]);
+    let name = line.slice(0, m.index).trim();
+    if (/\btotal\b/i.test(name) && !/sub/i.test(name)) { total = price; pendingName = null; continue; }
+    if (!name) { if (!pendingName) continue; name = pendingName; }
+    pendingName = null;
+    if (neg || price <= 0 || SKIP_RE.test(name)) continue;
+    let qty = 1;
+    const q1 = name.match(/^(\d{1,2})\s*(?:x|@|ea)?\s+(?=[A-Za-z])/i); if (q1) { qty = +q1[1]; name = name.slice(q1[0].length); }
+    const q2 = name.match(/(\d{1,2})\s*(?:@|x)\s*\$?\d+[.,]\d{2}/i); if (q2) { qty = +q2[1]; name = name.replace(q2[0], ''); }
+    const w = name.match(/(\d+(?:\.\d+)?)\s*(lb|kg|oz|g)\b\s*(@\s*\$?\d+[.,]\d{2}\s*(?:\/\s*\w+)?)?/i); if (w && w[3]) name = name.replace(w[0], '');
+    name = name.replace(/^\d{4,}\s*/, '').replace(/\s\d{4,}$/, '').replace(/[*#~_=]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const letters = (name.match(/[A-Za-z]/g) || []).length;
+    if (letters < 2) continue;
+    if (pendingQty) { if (qty === 1 && near(price, pendingQty.q * pendingQty.unit)) qty = pendingQty.q; pendingQty = null; }
+    items.push({ name: titleCase(name), qty, price });
+  }
+  return { store, date: parseDate(text), total, items };
+}
+
+// ---------- rendering ----------
+const $ = id => document.getElementById(id);
+function catOptions(sel){ return CATS.map(c => `<option value="${esc(c)}"${c === sel ? ' selected' : ''}>${esc(c)}</option>`).join(''); }
+function renderAll(){ renderPills(); renderList(); renderPantry(); renderInsights(); $('soonDays').value = state.settings.soonDays ?? 3; $('dataNote').textContent = `${state.items.length} items, ${state.items.reduce((n, i) => n + (i.purchases || []).length, 0)} purchases, ${state.receipts.length} receipts saved.`; }
+function renderPills(){
+  const ps = state.items.map(i => ({ i, p: predict(i) }));
+  const over = ps.filter(x => x.p.status === 'overdue' || x.i.onList).length;
+  const soon = ps.filter(x => x.p.status === 'soon' && !x.i.onList).length;
+  const ok = ps.filter(x => x.p.status === 'ok' && !x.i.onList).length;
+  $('pills').innerHTML = `<span class="pill over"><b>${over}</b> to buy</span><span class="pill soon"><b>${soon}</b> due soon</span><span class="pill ok"><b>${ok}</b> stocked</span>`;
+}
+function itemRow(it, p, mode){
+  const bits = [];
+  if (p.interval) bits.push(fmtEvery(p.interval) + (p.source === 'auto' ? '' : ' (set)'));
+  if (p.last) bits.push(`last ${fmtDate(p.last)}${p.lastP && p.lastP.price ? ' · ' + money(p.lastP.price) : ''}${p.lastP && p.lastP.store ? ' at ' + esc(p.lastP.store) : ''}`);
+  const st = it.onList ? 'listed' : p.status;
+  const chip = `<span class="chip ${st}">${esc(statusLabel(p, it))}</span>`;
+  const stripeCls = it.onList ? 'over' : (p.status === 'overdue' ? 'over' : p.status);
+  const actions = mode === 'list'
+    ? `<button class="btn quiet sm" data-act="snooze" data-id="${it.id}" title="Push it back a few days">Still have some</button><button class="btn quiet sm" data-act="edit" data-id="${it.id}">Edit</button>`
+    : `<button class="btn quiet sm" data-act="tolist" data-id="${it.id}">${it.onList ? 'Remove from list' : 'Add to list'}</button><button class="btn quiet sm" data-act="edit" data-id="${it.id}">Edit</button>`;
+  const lead = mode === 'list'
+    ? `<button class="check" data-act="bought" data-id="${it.id}" title="Mark as bought today" aria-label="Mark ${esc(it.name)} as bought"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 8.5l3 3 7-7"/></svg></button>`
+    : `<span class="stripe ${stripeCls}"></span>`;
+  return `<div class="item ${mode === 'pantry' ? 'clickable' : ''}" data-id="${it.id}">${lead}<div><div class="name">${esc(it.name)} <span class="chip">${esc(it.category)}</span> ${mode === 'pantry' ? chip : (p.status === 'overdue' ? chip : '')}</div><div class="meta">${bits.join(' · ') || 'no purchases yet'}</div></div><div class="actions">${actions}</div></div>`;
+}
+function renderList(){
+  const rows = state.items.map(i => ({ i, p: predict(i) }));
+  const now = rows.filter(x => x.i.onList || x.p.status === 'overdue').sort((a, b) => (a.p.daysLeft ?? 99) - (b.p.daysLeft ?? 99));
+  const soon = rows.filter(x => !x.i.onList && x.p.status === 'soon').sort((a, b) => a.p.daysLeft - b.p.daysLeft);
+  let html = '';
+  if (!state.items.length) {
+    html = `<div class="empty"><h3>Your pantry is empty</h3><p>Add items above, scan a receipt, or load an example pantry to see how predictions work.</p><button class="btn primary" type="button" data-act="sample">Load example pantry</button></div>`;
+  } else if (!now.length && !soon.length) {
+    html = `<div class="empty"><h3>Nothing to buy right now</h3><p>Everything is stocked. Items show up here when they are predicted to run out.</p></div>`;
+  }
+  const group = (list, title, note) => {
+    if (!list.length) return '';
+    const byCat = {}; for (const x of list) (byCat[x.i.category] ||= []).push(x);
+    const cats = CATS.filter(c => byCat[c]).concat(Object.keys(byCat).filter(c => !CATS.includes(c)));
+    return `<div class="stack"><div class="sec-head"><h2>${title} <span class="muted" style="font-family:var(--body);font-size:.9rem;font-weight:500">${list.length}</span></h2><span class="small muted">${note}</span></div>` +
+      cats.map(c => `<div><div class="eyebrow" style="margin:6px 0 6px">${esc(c)}</div><div class="items">${byCat[c].map(x => itemRow(x.i, x.p, 'list')).join('')}</div></div>`).join('') + '</div>';
+  };
+  html += group(now, 'Buy now', 'tap the circle when bought') + group(soon, 'Coming up', `due within ${state.settings.soonDays ?? 3} days`);
+  $('listBody').innerHTML = html;
+}
+function renderPantry(){
+  const q = norm($('pantrySearch').value), sort = $('pantrySort').value;
+  let rows = state.items.map(i => ({ i, p: predict(i) }));
+  if (q) rows = rows.filter(x => norm(x.i.name).includes(q) || (x.i.aliases || []).some(a => norm(a).includes(q)) || norm(x.i.category).includes(q));
+  const order = { overdue: 0, soon: 1, ok: 2, unknown: 3 };
+  rows.sort((a, b) => sort === 'name' ? a.i.name.localeCompare(b.i.name)
+    : sort === 'cat' ? (a.i.category.localeCompare(b.i.category) || a.i.name.localeCompare(b.i.name))
+    : sort === 'last' ? (b.p.last || '').localeCompare(a.p.last || '')
+    : (order[a.p.status] - order[b.p.status]) || ((a.p.daysLeft ?? 999) - (b.p.daysLeft ?? 999)) || a.i.name.localeCompare(b.i.name));
+  $('pantryBody').innerHTML = rows.length ? `<div class="items">${rows.map(x => itemRow(x.i, x.p, 'pantry')).join('')}</div>`
+    : `<div class="empty"><h3>${state.items.length ? 'No matches' : 'Nothing here yet'}</h3><p>${state.items.length ? 'Try another search.' : 'Add items from the shopping list or scan a receipt.'}</p></div>`;
+}
+function renderInsights(){
+  const ps = state.items.flatMap(i => (i.purchases || []).filter(p => p.price > 0).map(p => ({ ...p, item: i })));
+  if (!ps.length) { $('insightsBody').innerHTML = `<div class="empty"><h3>No prices yet</h3><p>Scan receipts or add purchases with prices and spending shows up here.</p></div>`; return; }
+  const t = today(), m0 = t.slice(0, 7);
+  const thisMonth = ps.filter(p => p.date.startsWith(m0)).reduce((s, p) => s + p.price * (p.qty || 1), 0);
+  const last30 = ps.filter(p => daysBetween(p.date, t) < 30).reduce((s, p) => s + p.price * (p.qty || 1), 0);
+  const prev30 = ps.filter(p => { const d = daysBetween(p.date, t); return d >= 30 && d < 60; }).reduce((s, p) => s + p.price * (p.qty || 1), 0);
+  const byCat = {}, byStore = {};
+  for (const p of ps.filter(p => daysBetween(p.date, t) < 90)) { byCat[p.item.category] = (byCat[p.item.category] || 0) + p.price * (p.qty || 1); if (p.store) byStore[p.store] = (byStore[p.store] || 0) + p.price * (p.qty || 1); }
+  const bars = obj => { const e = Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, 8); const max = e[0] ? e[0][1] : 1; return `<div class="bars">${e.map(([k, v]) => `<div><span>${esc(k)}</span><i style="width:${(v / max * 100).toFixed(1)}%"></i><span>${money(v)}</span></div>`).join('')}</div>`; };
+  // price changes: items whose latest price is >10% different from the median of earlier prices
+  const changes = state.items.map(i => { const pr = (i.purchases || []).filter(p => p.price > 0).sort((a, b) => a.date.localeCompare(b.date)); if (pr.length < 2) return null; const last = pr[pr.length - 1].price, prev = median(pr.slice(0, -1).map(p => p.price)); const d = (last - prev) / prev; return Math.abs(d) >= 0.1 ? { name: i.name, last, prev, d } : null; }).filter(Boolean).sort((a, b) => b.d - a.d);
+  $('insightsBody').innerHTML = `
+    <div class="tiles"><div class="tile"><div class="v">${money(thisMonth)}</div><div class="l">spent this month</div></div><div class="tile"><div class="v">${money(last30)}</div><div class="l">last 30 days${prev30 ? ` · ${last30 >= prev30 ? '+' : '−'}${money(Math.abs(last30 - prev30)).slice(1)} vs the 30 before` : ''}</div></div><div class="tile"><div class="v">${ps.length}</div><div class="l">priced purchases</div></div></div>
+    <div class="card flat stack"><h3>By category, last 90 days</h3>${bars(byCat)}</div>
+    ${Object.keys(byStore).length ? `<div class="card flat stack"><h3>By store, last 90 days</h3>${bars(byStore)}</div>` : ''}
+    ${changes.length ? `<div class="card flat stack"><h3>Price changes</h3><div class="hist">${changes.map(c => `<div><span>${esc(c.name)}</span><span class="muted">${money(c.prev)}</span><span>${money(c.last)}</span><span class="chip ${c.d > 0 ? 'over' : 'ok'}">${c.d > 0 ? '+' : ''}${Math.round(c.d * 100)}%</span></div>`).join('')}</div></div>` : ''}`;
+}
+
+// ---------- actions ----------
+function findItem(id){ return state.items.find(i => i.id === id); }
+function addPurchase(item, p){ (item.purchases ||= []).push({ date: p.date || today(), qty: p.qty || 1, price: p.price ?? null, store: p.store || '' }); }
+function markBought(id){
+  const it = findItem(id); if (!it) return;
+  const snapshot = { onList: it.onList, snoozeUntil: it.snoozeUntil, n: (it.purchases || []).length };
+  addPurchase(it, { date: today() }); it.onList = false; it.snoozeUntil = null; save(); renderAll();
+  toast(`${it.name} bought today`, 'Undo', () => { it.purchases.length = snapshot.n; it.onList = snapshot.onList; it.snoozeUntil = snapshot.snoozeUntil; save(); renderAll(); });
+}
+function snooze(id){
+  const it = findItem(id); if (!it) return; const p = predict(it);
+  const days = Math.max(2, Math.round((p.interval || 7) * 0.3));
+  it.snoozeUntil = addDays(today(), days); it.onList = false; save(); renderAll();
+  toast(`${it.name} pushed back ${days} days`, 'Undo', () => { it.snoozeUntil = null; save(); renderAll(); });
+}
+function toast(msg, actLabel, act){
+  const t = $('toast'); $('toastMsg').textContent = msg; const b = $('toastAct');
+  b.hidden = !actLabel; b.textContent = actLabel || ''; pendingUndo = act || null; t.hidden = false;
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => { t.hidden = true; pendingUndo = null; }, 6000);
+}
+$('toastAct').addEventListener('click', () => { if (pendingUndo) pendingUndo(); $('toast').hidden = true; pendingUndo = null; });
+
+function showTab(name){
+  for (const b of $('tabs').querySelectorAll('button')) b.setAttribute('aria-selected', String(b.dataset.tab === name));
+  for (const s of document.querySelectorAll('main section')) s.hidden = s.id !== 'tab-' + name;
+  try { localStorage.setItem(KEY + '.tab', name); } catch (e) {}
+}
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab); });
+
+document.body.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (b) {
+    const id = b.dataset.id, act = b.dataset.act;
+    if (act === 'bought') markBought(id);
+    else if (act === 'snooze') snooze(id);
+    else if (act === 'edit') openDialog(id);
+    else if (act === 'tolist') { const it = findItem(id); it.onList = !it.onList; if (it.onList) it.snoozeUntil = null; save(); renderAll(); }
+    else if (act === 'sample') loadSample();
+    return;
+  }
+  const row = e.target.closest('.item.clickable'); if (row) openDialog(row.dataset.id);
+});
+
+$('addForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('addName').value.trim(); if (!name) return;
+  const every = parseInt($('addEvery').value, 10) || null;
+  let it = state.items.find(i => norm(i.name) === norm(name));
+  if (!it) { it = { id: uid(), name, category: $('addCat').value || guessCategory(name), intervalDays: every, aliases: [], purchases: [], onList: true }; state.items.push(it); }
+  else { it.onList = true; it.snoozeUntil = null; if (every) it.intervalDays = every; }
+  $('addName').value = ''; $('addEvery').value = ''; $('addCat').value = ''; save(); renderAll();
+});
+$('addName').addEventListener('input', () => { const c = guessCategory($('addName').value); $('addCat').value = c; });
+$('pantrySearch').addEventListener('input', renderPantry); $('pantrySort').addEventListener('change', renderPantry);
+$('soonDays').addEventListener('change', () => { state.settings.soonDays = Math.max(0, parseInt($('soonDays').value, 10) || 0); save(); renderAll(); });
+
+// ---------- item dialog ----------
+const dlg = $('itemDialog');
+function openDialog(id){
+  const it = findItem(id); if (!it) return; dialogItemId = id;
+  $('dTitle').textContent = it.name; $('dName').value = it.name; $('dCat').innerHTML = catOptions(it.category);
+  $('dEvery').value = it.intervalDays || ''; $('dDeleteConfirm').hidden = true; $('dAddPurchaseBox').hidden = true; $('dpDate').value = today(); $('dpQty').value = 1; $('dpPrice').value = ''; $('dpStore').value = '';
+  $('dToList').textContent = it.onList ? 'Remove from list' : 'Add to list';
+  renderDialogHistory(it);
+  if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+}
+function renderDialogHistory(it){
+  const p = predict(it);
+  $('dAuto').textContent = p.auto ? `Learned from purchases: ${fmtEvery(p.auto)} (${p.count} purchases). Leave blank to use that.` : p.count === 1 ? 'One purchase so far. One more and Restock can predict the next.' : 'No purchases yet. Set an interval or record a purchase.';
+  $('dAliases').textContent = (it.aliases || []).length ? 'Also matched on receipts as: ' + it.aliases.join(', ') : '';
+  const ps = [...(it.purchases || [])].map((p, idx) => ({ ...p, idx })).sort((a, b) => b.date.localeCompare(a.date));
+  $('dHist').innerHTML = ps.length ? ps.map(p => `<div><span>${fmtDate(p.date)} <span class="muted small">${parseISO(p.date).getFullYear()}</span> <span class="store">${esc(p.store || '')}</span></span><span>${p.qty > 1 ? '×' + p.qty : ''}</span><span>${money(p.price)}</span><button class="btn quiet sm" type="button" data-del="${p.idx}" aria-label="Remove purchase">✕</button></div>`).join('') : '<div class="muted small">No purchases recorded.</div>';
+}
+$('dHist').addEventListener('click', e => { const b = e.target.closest('[data-del]'); if (!b) return; const it = findItem(dialogItemId); it.purchases.splice(+b.dataset.del, 1); save(); renderDialogHistory(it); renderAll(); });
+$('dAddPurchase').addEventListener('click', () => { $('dAddPurchaseBox').hidden = !$('dAddPurchaseBox').hidden; });
+$('dpSave').addEventListener('click', () => { const it = findItem(dialogItemId); if (!$('dpDate').value) return; addPurchase(it, { date: $('dpDate').value, qty: +$('dpQty').value || 1, price: parseFloat($('dpPrice').value) || null, store: $('dpStore').value.trim() }); $('dAddPurchaseBox').hidden = true; $('dpPrice').value = ''; save(); renderDialogHistory(it); renderAll(); });
+$('dClose').addEventListener('click', () => dlg.close());
+$('dDelete').addEventListener('click', () => { $('dDeleteConfirm').hidden = false; });
+$('dDeleteYes').addEventListener('click', () => { const idx = state.items.findIndex(i => i.id === dialogItemId); const [it] = state.items.splice(idx, 1); save(); renderAll(); dlg.close(); toast(`${it.name} deleted`, 'Undo', () => { state.items.splice(idx, 0, it); save(); renderAll(); }); });
+$('dToList').addEventListener('click', () => { const it = findItem(dialogItemId); it.onList = !it.onList; if (it.onList) it.snoozeUntil = null; $('dToList').textContent = it.onList ? 'Remove from list' : 'Add to list'; save(); renderAll(); });
+$('itemForm').addEventListener('submit', () => { const it = findItem(dialogItemId); if (!it) return; it.name = $('dName').value.trim() || it.name; it.category = $('dCat').value; it.intervalDays = parseInt($('dEvery').value, 10) || null; save(); renderAll(); });
+
+// ---------- scanning ----------
+$('pickBtn').addEventListener('click', () => $('file').click());
+$('pasteBtn').addEventListener('click', () => { $('pasteBox').hidden = !$('pasteBox').hidden; if (!$('pasteBox').hidden) $('pasteText').focus(); });
+$('parsePasteBtn').addEventListener('click', () => { const t = $('pasteText').value; if (t.trim()) startReview(t, null); });
+$('file').addEventListener('change', () => { const f = $('file').files[0]; if (f) scanFile(f); });
+const drop = $('drop');
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) scanFile(f); });
+window.addEventListener('paste', e => { if (!$('tab-scan').hidden && e.clipboardData) { for (const f of e.clipboardData.files || []) if (f.type.startsWith('image/')) { scanFile(f); break; } } });
+
+function setProgress(frac, msg){ $('ocrStatus').hidden = false; $('ocrBar').style.width = Math.round(frac * 100) + '%'; $('ocrMsg').textContent = msg; }
+async function localEngineAvailable(){ try { const r = await fetch('vendor/worker.min.js', { method: 'HEAD' }); return r.ok; } catch (e) { return false; } }
+async function getWorker(){
+  if (worker) return worker;
+  if (!window.Tesseract) throw new Error('The text reader did not load. Check your connection and reload the page.');
+  const local = await localEngineAvailable();
+  const opts = { logger: m => { if (m.status === 'recognizing text') setProgress(0.3 + 0.7 * (m.progress || 0), `Reading text… ${Math.round((m.progress || 0) * 100)}%`); else if (m.status) setProgress(0.15, 'Loading the reader (first time takes a moment)…'); } };
+  if (local) Object.assign(opts, { workerPath: 'vendor/worker.min.js', corePath: 'vendor/tesseract-core-simd-lstm.wasm.js', langPath: 'vendor' });
+  worker = await Tesseract.createWorker('eng', 1, opts);
+  await worker.setParameters({ preserve_interword_spaces: '1' });
+  return worker;
+}
+function fileToCanvas(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = () => {
+      let scale = 1; if (img.width < 1400) scale = 1400 / img.width; if (Math.max(img.width, img.height) * scale > 2600) scale = 2600 / Math.max(img.width, img.height);
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+      const ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, c.width, c.height);
+      const im = ctx.getImageData(0, 0, c.width, c.height), d = im.data, hist = new Uint32Array(256);
+      for (let i = 0; i < d.length; i += 4) { const g = (d[i] * 299 + d[i+1] * 587 + d[i+2] * 114) / 1000 | 0; d[i] = g; hist[g]++; }
+      const n = d.length / 4; let lo = 0, hi = 255, acc = 0; for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc > n * 0.02) { lo = i; break; } } acc = 0; for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc > n * 0.02) { hi = i; break; } }
+      const range = Math.max(1, hi - lo);
+      for (let i = 0; i < d.length; i += 4) { const g = Math.max(0, Math.min(255, (d[i] - lo) * 255 / range)); d[i] = d[i+1] = d[i+2] = g; }
+      ctx.putImageData(im, 0, 0); URL.revokeObjectURL(url); resolve(c);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file could not be opened as an image.')); };
+    img.src = url;
+  });
+}
+async function scanFile(file){
+  $('preview').src = URL.createObjectURL(file); $('preview').hidden = false; $('pasteBox').hidden = true;
+  setProgress(0.05, 'Preparing the photo…');
+  try {
+    const canvas = await fileToCanvas(file);
+    const w = await getWorker();
+    setProgress(0.3, 'Reading text…');
+    const { data } = await w.recognize(canvas);
+    $('ocrStatus').hidden = true;
+    const text = data.text || '';
+    if (!text.trim()) { toast('No text found. Try a sharper, better-lit photo.'); return; }
+    startReview(text, file);
+  } catch (err) {
+    $('ocrStatus').hidden = true; console.error(err);
+    toast(err && err.message ? err.message : 'Reading failed. Try another photo or paste the text.');
+  } finally { $('file').value = ''; }
+}
+function startReview(text, file){
+  const r = parseReceipt(text);
+  scanDraft = { raw: text, store: r.store || '', date: r.date || today(), total: r.total, lines: r.items.map(l => draftLine(l)) };
+  if (!scanDraft.lines.length) scanDraft.lines.push(draftLine({ name: '', qty: 1, price: null }));
+  $('scanStep1').hidden = true; $('scanStep2').hidden = false; $('rRaw').textContent = text;
+  renderReview();
+  if (!r.items.length) toast('No item lines were recognised. Edit the lines below or try another photo.');
+}
+function draftLine(l){
+  const m = bestMatches(l.name); const match = m.length ? m[0].it.id : 'new';
+  return { id: uid(), on: true, name: l.name, qty: l.qty || 1, price: l.price, cat: match !== 'new' ? m[0].it.category : guessCategory(l.name), match };
+}
+function renderReview(){
+  $('rStore').value = scanDraft.store; $('rDate').value = scanDraft.date; $('rTotal').value = scanDraft.total ?? '';
+  const sorted = [...state.items].sort((a, b) => a.name.localeCompare(b.name));
+  $('rRows').innerHTML = scanDraft.lines.map(l => {
+    const ms = bestMatches(l.name); const ids = new Set(ms.map(m => m.it.id));
+    const opts = `<option value="new"${l.match === 'new' ? ' selected' : ''}>New item</option>` +
+      (ms.length ? `<optgroup label="Likely">${ms.map(m => `<option value="${m.it.id}"${l.match === m.it.id ? ' selected' : ''}>${esc(m.it.name)}</option>`).join('')}</optgroup>` : '') +
+      (sorted.length ? `<optgroup label="All pantry items">${sorted.filter(i => !ids.has(i.id)).map(i => `<option value="${i.id}"${l.match === i.id ? ' selected' : ''}>${esc(i.name)}</option>`).join('')}</optgroup>` : '');
+    return `<tr data-line="${l.id}" class="${l.on ? '' : 'off'}"><td><input type="checkbox" data-f="on"${l.on ? ' checked' : ''} aria-label="Include"></td><td><input type="text" data-f="name" value="${esc(l.name)}"></td><td><input type="number" data-f="qty" min="1" value="${l.qty}"></td><td><input type="number" data-f="price" step="0.01" min="0" value="${l.price ?? ''}"></td><td><select data-f="cat">${catOptions(l.cat)}</select></td><td><select data-f="match">${opts}</select></td></tr>`;
+  }).join('');
+  updateReviewSummary();
+}
+function updateReviewSummary(){
+  const on = scanDraft.lines.filter(l => l.on); const sum = on.reduce((s, l) => s + (l.price || 0), 0);
+  const tot = parseFloat($('rTotal').value);
+  $('rSummary').textContent = `${on.length} items · ${money(sum)}${tot ? ` of ${money(tot)} on the receipt` : ''}`;
+  $('rSave').disabled = !on.length;
+}
+$('rRows').addEventListener('input', e => {
+  const tr = e.target.closest('tr'); const l = scanDraft.lines.find(x => x.id === tr.dataset.line); const f = e.target.dataset.f; if (!l || !f) return;
+  if (f === 'on') { l.on = e.target.checked; tr.classList.toggle('off', !l.on); }
+  else if (f === 'qty') l.qty = Math.max(1, parseInt(e.target.value, 10) || 1);
+  else if (f === 'price') l.price = parseFloat(e.target.value); 
+  else if (f === 'cat') l.cat = e.target.value;
+  else if (f === 'match') { l.match = e.target.value; if (l.match !== 'new') { const it = findItem(l.match); if (it) { l.cat = it.category; tr.querySelector('[data-f=cat]').value = it.category; } } }
+  else if (f === 'name') { l.name = e.target.value; if (l.match === 'new') { const c = guessCategory(l.name); l.cat = c; tr.querySelector('[data-f=cat]').value = c; } }
+  updateReviewSummary();
+});
+$('rRows').addEventListener('change', e => { if (e.target.dataset.f === 'name') { const tr = e.target.closest('tr'); const l = scanDraft.lines.find(x => x.id === tr.dataset.line); const ms = bestMatches(l.name); if (ms.length && l.match === 'new') { l.match = ms[0].it.id; l.cat = ms[0].it.category; } renderReview(); } });
+$('rTotal').addEventListener('input', updateReviewSummary);
+$('rAddLine').addEventListener('click', () => { scanDraft.lines.push(draftLine({ name: '', qty: 1, price: null })); renderReview(); $('rRows').lastElementChild.querySelector('[data-f=name]').focus(); });
+$('scanBack').addEventListener('click', resetScan);
+function resetScan(){ scanDraft = null; $('scanStep2').hidden = true; $('scanStep1').hidden = false; $('preview').hidden = true; $('preview').src = ''; $('ocrStatus').hidden = true; }
+$('rSave').addEventListener('click', () => {
+  const store = $('rStore').value.trim(), date = $('rDate').value || today();
+  const on = scanDraft.lines.filter(l => l.on && l.name.trim());
+  if (!on.length) return;
+  let created = 0;
+  for (const l of on) {
+    let it = l.match !== 'new' ? findItem(l.match) : null;
+    if (!it) it = state.items.find(i => norm(i.name) === norm(l.name));
+    if (!it) { it = { id: uid(), name: l.name.trim(), category: l.cat || 'Other', intervalDays: null, aliases: [], purchases: [], onList: false }; state.items.push(it); created++; }
+    else if (norm(it.name) !== norm(l.name) && !(it.aliases || []).some(a => norm(a) === norm(l.name))) { (it.aliases ||= []).push(l.name.trim()); if (it.aliases.length > 12) it.aliases.shift(); }
+    addPurchase(it, { date, qty: l.qty, price: l.price > 0 ? +(l.price / (l.qty || 1)).toFixed(2) : null, store });
+    it.onList = false; it.snoozeUntil = null;
+  }
+  state.receipts.push({ id: uid(), date, store, total: parseFloat($('rTotal').value) || null, items: on.length });
+  save(); renderAll(); resetScan();
+  toast(`Saved ${on.length} purchases${store ? ' from ' + store : ''}${created ? `, ${created} new items` : ''}`);
+  showTab('pantry');
+});
+
+// ---------- backup ----------
+$('exportBtn').addEventListener('click', async () => {
+  const json = JSON.stringify(state); $('exportBox').value = json; $('exportBox').hidden = false;
+  try { await navigator.clipboard.writeText(json); toast('Backup copied to clipboard'); } catch (e) { $('exportBox').select(); toast('Select the text below and copy it'); }
+});
+$('importToggle').addEventListener('click', () => { $('importBox').hidden = !$('importBox').hidden; });
+$('importBtn').addEventListener('click', () => {
+  try { const d = JSON.parse($('importText').value); if (!d || !Array.isArray(d.items)) throw new Error(); state = { items: d.items, receipts: d.receipts || [], settings: d.settings || { soonDays: 3 } }; save(); renderAll(); $('importBox').hidden = true; $('importText').value = ''; toast('Backup restored'); }
+  catch (e) { toast('That does not look like a Restock backup.'); }
+});
+$('sampleBtn').addEventListener('click', loadSample);
+let clearArmed = false;
+$('clearBtn').addEventListener('click', () => {
+  if (!clearArmed) { clearArmed = true; $('clearBtn').textContent = 'Tap again to delete everything'; setTimeout(() => { clearArmed = false; $('clearBtn').textContent = 'Delete everything'; }, 4000); return; }
+  const old = state; state = { items: [], receipts: [], settings: { soonDays: 3 } }; save(); renderAll(); clearArmed = false; $('clearBtn').textContent = 'Delete everything';
+  toast('Everything deleted', 'Undo', () => { state = old; save(); renderAll(); });
+});
+
+// ---------- sample data ----------
+function loadSample(){
+  const t = today();
+  // name, category, interval in days, days since last purchase, purchases, price, store
+  const rows = [
+    ['Whole milk', 'Dairy & eggs', 7, 9, 6, 3.99, "Trader Joe's"],
+    ['Eggs, dozen', 'Dairy & eggs', 10, 9, 5, 4.49, "Trader Joe's"],
+    ['Bananas', 'Produce', 6, 4, 8, 1.29, "Trader Joe's"],
+    ['Greek yogurt', 'Dairy & eggs', 8, 2, 4, 5.49, 'Costco'],
+    ['Sourdough bread', 'Bakery', 7, 7, 5, 4.99, "Trader Joe's"],
+    ['Coffee beans', 'Pantry', 21, 16, 4, 12.99, 'Costco'],
+    ['Olive oil', 'Pantry', 60, 44, 3, 11.99, 'Costco'],
+    ['Chicken thighs', 'Meat & fish', 10, 3, 5, 8.72, 'Safeway'],
+    ['Baby spinach', 'Produce', 7, 6, 6, 3.49, "Trader Joe's"],
+    ['Toilet paper', 'Household', 30, 31, 3, 18.99, 'Costco'],
+    ['Dish soap', 'Household', 45, 20, 2, 3.79, 'Safeway'],
+    ['Sparkling water', 'Drinks', 14, 12, 4, 5.99, 'Costco'],
+    ['Oats', 'Pantry', 28, 10, 3, 4.29, "Trader Joe's"],
+    ['Cheddar', 'Dairy & eggs', 14, 15, 4, 6.49, 'Safeway'],
+    ['Toothpaste', 'Personal care', 50, 23, 2, 4.19, 'Safeway'],
+    ['Tortilla chips', 'Snacks', 12, 1, 3, 3.29, "Trader Joe's"],
+  ];
+  const items = rows.map(([name, category, every, since, n, price, store], k) => {
+    const purchases = []; let d = addDays(t, -since);
+    for (let i = 0; i < n; i++) { const jitter = ((k * 7 + i * 3) % 5) - 2; purchases.unshift({ date: d, qty: 1, price: +(price * (1 + (((k + i) % 4) - 1.5) * 0.03)).toFixed(2), store }); d = addDays(d, -(every + (i === n - 2 ? 0 : jitter))); }
+    return { id: uid(), name, category, intervalDays: null, aliases: [], purchases, onList: false };
+  });
+  items.push({ id: uid(), name: 'Birthday candles', category: 'Household', intervalDays: null, aliases: [], purchases: [], onList: true });
+  state = { items, receipts: [], settings: { soonDays: state.settings.soonDays ?? 3 } };
+  save(); renderAll(); showTab('list'); toast('Example pantry loaded. Delete it any time in Settings.');
+}
+
+// ---------- boot ----------
+$('addCat').innerHTML = `<option value="">Category (auto)</option>` + catOptions('');
+$('rDate').max = today(); $('dpDate').max = today();
+renderAll();
+let startTab = 'list'; try { startTab = localStorage.getItem(KEY + '.tab') || 'list'; } catch (e) {}
+if (location.hash && /^#(list|pantry|scan|insights|settings)$/.test(location.hash)) startTab = location.hash.slice(1);
+showTab(startTab);
+window.Restock = { parseReceipt, predict, state: () => state };
+})();
+</script>
+<!-- page:end -->
+</body>
+</html>
