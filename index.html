@@ -668,10 +668,29 @@ async function getWorker(){
   if (!window.Tesseract) throw new Error('The text reader did not load. Check your connection and reload the page.');
   const local = await localEngineAvailable();
   const opts = { logger: m => { if (m.status === 'recognizing text') setProgress(0.3 + 0.7 * (m.progress || 0), `Reading text… ${Math.round((m.progress || 0) * 100)}%`); else if (m.status) setProgress(0.15, 'Loading the reader (first time takes a moment)…'); } };
-  if (local) Object.assign(opts, { workerPath: 'vendor/worker.min.js', corePath: 'vendor/tesseract-core-simd-lstm.wasm.js', langPath: 'vendor' });
+  if (local) {
+    Object.assign(opts, { workerPath: 'vendor/worker.min.js', corePath: 'vendor/tesseract-core-simd-lstm.wasm.js', langPath: 'vendor' });
+    await primeLanguageCache();
+  }
   worker = await Tesseract.createWorker('eng', 1, opts);
   await worker.setParameters({ preserve_interword_spaces: '1' });
   return worker;
+}
+// The worker looks for language data in IndexedDB (idb-keyval, key "./eng.traineddata") before fetching
+// "<langPath>/eng.traineddata.gz". Some hosts cannot serve a .gz file, so the page fills that cache itself.
+async function primeLanguageCache(){
+  const DB = 'keyval-store', STORE = 'keyval', KEYNAME = './eng.traineddata';
+  try {
+    const db = await new Promise((res, rej) => { const r = indexedDB.open(DB); r.onupgradeneeded = () => r.result.createObjectStore(STORE); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const have = await new Promise((res, rej) => { const q = db.transaction(STORE, 'readonly').objectStore(STORE).get(KEYNAME); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+    if (have) { db.close(); return; }
+    let bytes = null;
+    for (const u of ['vendor/eng.traineddata.gz', 'vendor/eng.traineddata.gz.txt']) { try { const r = await fetch(u); if (r.ok) { bytes = await r.arrayBuffer(); break; } } catch (e) {} }
+    if (!bytes) { db.close(); return; }
+    if (typeof DecompressionStream === 'function') { try { bytes = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(); } catch (e) {} }
+    await new Promise((res, rej) => { const tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).put(new Uint8Array(bytes), KEYNAME); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+    db.close();
+  } catch (e) { /* no IndexedDB available: the worker fetches the file itself */ }
 }
 function fileToCanvas(file){
   return new Promise((resolve, reject) => {
