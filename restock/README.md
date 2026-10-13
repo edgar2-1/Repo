@@ -8,18 +8,22 @@ Restock is a web app you add to your home screen. Host this folder on any static
 
 ## What it does
 
-- **Shopping list** – items appear automatically when they are predicted to run out, or add them by hand. Tap the circle when you buy something: it animates away and the purchase is logged for today, with undo.
-- **Stock control** – every row has a three-position control: Restocked (restarts the cycle from today), Used (let the prediction decide) and Buy soon (puts it on the list now). Tap a row to reveal details and actions.
-- **Pantry** – every item with its learned interval, last purchase, next due date and status. Set a fixed interval on any item to override.
-- **Scan receipt** – photograph a receipt, or try the built-in sample. A scanning sweep runs while the text is read, then the recognised lines light up on the photo and land in an editable list, matched to your pantry. Corrections are remembered as aliases.
-- **Spending** – this month and last 30 days, breakdown by category and store, and items whose price moved more than 10%.
-- **Settings** – "due soon" threshold, backup and restore as JSON, example data, delete everything.
+- **Shopping list** – items appear a few days before they're predicted to run out. Quick add takes several at once with quantities: `2 oat milk, eggs, limes x3`, with suggestions from your pantry.
+- **Shopping trips** – tick items into the cart as you shop (or swipe right). A cart bar shows the running total; **Finish trip** logs everything with prices prefilled from what you last paid at that store. The screen stays awake while items are in the cart.
+- **Store aware** – each item learns your usual store. Group the list by store with a subtotal for each, and get "due soon, add while you're there" suggestions for the same store. Every item shows its price at each store you've bought it, with the lowest marked.
+- **Stock control** – every item has Restocked / Used / Buy soon.
+- **Receipt scanning** – photograph a receipt (or try the built-in sample). Lines are read on the device, highlighted on the photo, matched to your pantry, and saved as a trip.
+- **Products and nutrition** – after a scan, each line is matched to a real product in [Open Food Facts](https://world.openfoodfacts.org): photo, brand, Nutri-Score, calories and a full nutrition table per 100 g, plus a Nutri-Score summary for the whole shop. Matches start as suggestions you confirm; you can pick another or type the barcode for an exact match. Searches are paced to Open Food Facts' rate limit and retried when the service is busy.
+- **Reminders** – a count of items to buy on the app icon (Home Screen app, iOS 16.4+), and a weekly shopping-day event with an alert you can add to Calendar.
+- **Share** – send the list as text, grouped by store, from the iOS share sheet.
+- **Spending** – monthly budget with pace, spend by aisle, a history of trips you can open, and price changes.
+- **Gestures** – swipe right to put in the cart (or add to the list from Pantry), swipe left to snooze or delete, tap for details in a sheet. Everything undoable.
 
 Predictions: after two purchases of an item, the median gap between purchase dates becomes its interval. Next due = last purchase (or the day you marked it Restocked) + interval.
 
 ## Running it locally
 
-Serve the repository root with any static server (for example `python3 -m http.server`) and open `/restock/`. All data stays in that browser. Nothing is uploaded anywhere.
+Serve the repository root with any static server (for example `python3 -m http.server`) and open `/restock/`. Your lists and purchases stay in that browser. The only network calls are product searches to Open Food Facts, which send the item name and nothing else.
 
 Receipt reading uses [Tesseract.js](https://github.com/naptha/tesseract.js). The engine files live in `vendor/` and a service worker (`sw.js`) caches them, so the app works offline after the first load. If `vendor/` is missing, the app falls back to loading the engine from a CDN.
 

@@ -1,6 +1,6 @@
 // Offline cache for Restock. The page is fetched network-first so updates land on the next open;
 // the OCR engine files are cached once and served from cache.
-const CACHE = 'restock-v3';
+const CACHE = 'restock-v4';
 const ENGINE = ['vendor/tesseract.min.js', 'vendor/worker.min.js', 'vendor/tesseract-core-simd-lstm.wasm.js', 'vendor/tesseract-core-simd-lstm.wasm', 'vendor/eng.traineddata.gz'];
 const SHELL = ['index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll([...SHELL, ...ENGINE])).then(() => self.skipWaiting())); });
