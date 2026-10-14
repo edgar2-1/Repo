@@ -1,0 +1,17 @@
+# Xcode
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+build/
+*.xcuserstate
+
+# XcodeGen output (regenerate with `xcodegen generate`)
+Restock.xcodeproj/
+Restock/Info.plist
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+.DS_Store

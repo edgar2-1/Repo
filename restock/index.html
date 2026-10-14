@@ -620,7 +620,8 @@ const estLine = it => { const pr = lastPrice(it, prefStore(it)); return pr ? pr 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 function titleCase(s){ return s.toLowerCase().replace(/(^|[\s(\/-])([a-z])/g, (m, a, c) => a + c.toUpperCase()).replace(/\b(And|Of|With|In)\b/g, w => w.toLowerCase()); }
-function guessCategory(name){ const n = ' ' + norm(name) + ' '; for (const cat of Object.keys(CAT_WORDS)) for (const w of CAT_WORDS[cat]) if (n.includes(w)) return cat; return 'Other'; }
+const CAT_OVERRIDES = [['frozen','Frozen'],['ice cream','Frozen'],['coffee','Pantry'],['peanut butter','Pantry'],['olive oil','Pantry'],['dog food','Pets & baby'],['cat food','Pets & baby'],['baby food','Pets & baby']];
+function guessCategory(name){ const n = ' ' + norm(name) + ' '; const o = CAT_OVERRIDES.find(([w]) => n.includes(w)); if (o) return o[1]; for (const cat of Object.keys(CAT_WORDS)) for (const w of CAT_WORDS[cat]) if (n.includes(w)) return cat; return 'Other'; }
 function tokenMatch(a, b){ if (a === b) return true; if (a.length >= 3 && b.length >= 3) return a.startsWith(b) || b.startsWith(a); return false; }
 function matchScore(receiptName, item){
   const r = norm(receiptName), n = norm(item.name);
