@@ -1,5 +1,13 @@
 import Foundation
 
+extension KeyedDecodingContainer {
+    /// Decodes a value if it's present and well-formed; nil otherwise. Old or hand-edited backups never fail to load.
+    func lenient<T: Decodable>(_ type: T.Type, _ key: Key) -> T? {
+        guard let value = try? decodeIfPresent(type, forKey: key) else { return nil }
+        return value
+    }
+}
+
 // The data model matches the web app's backup JSON, so a backup copied from the
 // web version can be pasted into AppSettings > Restore and loads unchanged.
 
@@ -22,9 +30,9 @@ public struct Purchase: Codable, Hashable, Sendable {
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
         date = try c.decode(Day.self, forKey: .date)
-        qty = max(1, (try? c.decodeIfPresent(Int.self, forKey: .qty)) ?? 1)
-        price = try? c.decodeIfPresent(Double.self, forKey: .price)
-        store = ((try? c.decodeIfPresent(String.self, forKey: .store)) ?? nil) ?? ""
+        qty = max(1, c.lenient(Int.self, .qty) ?? 1)
+        price = c.lenient(Double.self, .price)
+        store = c.lenient(String.self, .store) ?? ""
     }
 }
 
@@ -60,10 +68,10 @@ public struct Product: Codable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey { case code, name, brand, qty, image, grade, serving, nutrition = "n", confirmed }
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
-        func s(_ k: CodingKeys) -> String { ((try? c.decodeIfPresent(String.self, forKey: k)) ?? nil) ?? "" }
+        func s(_ k: CodingKeys) -> String { c.lenient(String.self, k) ?? "" }
         code = s(.code); name = s(.name); brand = s(.brand); qty = s(.qty); image = s(.image); grade = s(.grade); serving = s(.serving)
-        nutrition = ((try? c.decodeIfPresent(Nutrition.self, forKey: .nutrition)) ?? nil) ?? Nutrition()
-        confirmed = ((try? c.decodeIfPresent(Bool.self, forKey: .confirmed)) ?? nil) ?? false
+        nutrition = c.lenient(Nutrition.self, .nutrition) ?? Nutrition()
+        confirmed = c.lenient(Bool.self, .confirmed) ?? false
     }
 }
 
@@ -98,21 +106,21 @@ public struct Item: Codable, Hashable, Sendable, Identifiable {
     enum CodingKeys: String, CodingKey { case id, name, category, intervalDays, aliases, purchases, onList, inCart, listQty, level, stockedOn, snoozeUntil, store, notes, product }
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
-        id = ((try? c.decodeIfPresent(String.self, forKey: .id)) ?? nil) ?? UUID().uuidString
+        id = c.lenient(String.self, .id) ?? UUID().uuidString
         name = try c.decode(String.self, forKey: .name)
-        category = ((try? c.decodeIfPresent(String.self, forKey: .category)) ?? nil) ?? "Other"
-        intervalDays = (try? c.decodeIfPresent(Int.self, forKey: .intervalDays)) ?? nil
-        aliases = ((try? c.decodeIfPresent([String].self, forKey: .aliases)) ?? nil) ?? []
-        purchases = ((try? c.decodeIfPresent([Purchase].self, forKey: .purchases)) ?? nil) ?? []
-        onList = ((try? c.decodeIfPresent(Bool.self, forKey: .onList)) ?? nil) ?? false
-        inCart = ((try? c.decodeIfPresent(Bool.self, forKey: .inCart)) ?? nil) ?? false
-        listQty = (try? c.decodeIfPresent(Int.self, forKey: .listQty)) ?? nil
-        level = (try? c.decodeIfPresent(StockLevel.self, forKey: .level)) ?? nil
-        stockedOn = (try? c.decodeIfPresent(Day.self, forKey: .stockedOn)) ?? nil
-        snoozeUntil = (try? c.decodeIfPresent(Day.self, forKey: .snoozeUntil)) ?? nil
-        store = (try? c.decodeIfPresent(String.self, forKey: .store)) ?? nil
-        notes = (try? c.decodeIfPresent(String.self, forKey: .notes)) ?? nil
-        product = (try? c.decodeIfPresent(Product.self, forKey: .product)) ?? nil
+        category = c.lenient(String.self, .category) ?? "Other"
+        intervalDays = c.lenient(Int.self, .intervalDays)
+        aliases = c.lenient([String].self, .aliases) ?? []
+        purchases = c.lenient([Purchase].self, .purchases) ?? []
+        onList = c.lenient(Bool.self, .onList) ?? false
+        inCart = c.lenient(Bool.self, .inCart) ?? false
+        listQty = c.lenient(Int.self, .listQty)
+        level = c.lenient(StockLevel.self, .level)
+        stockedOn = c.lenient(Day.self, .stockedOn)
+        snoozeUntil = c.lenient(Day.self, .snoozeUntil)
+        store = c.lenient(String.self, .store)
+        notes = c.lenient(String.self, .notes)
+        product = c.lenient(Product.self, .product)
     }
 
     public var quantityOnList: Int { max(1, listQty ?? 1) }
@@ -129,10 +137,10 @@ public struct TripLine: Codable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey { case itemId, name, qty, price }
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
-        itemId = (try? c.decodeIfPresent(String.self, forKey: .itemId)) ?? nil
-        name = ((try? c.decodeIfPresent(String.self, forKey: .name)) ?? nil) ?? ""
-        qty = max(1, ((try? c.decodeIfPresent(Int.self, forKey: .qty)) ?? nil) ?? 1)
-        price = (try? c.decodeIfPresent(Double.self, forKey: .price)) ?? nil
+        itemId = c.lenient(String.self, .itemId)
+        name = c.lenient(String.self, .name) ?? ""
+        qty = max(1, c.lenient(Int.self, .qty) ?? 1)
+        price = c.lenient(Double.self, .price)
     }
 }
 
@@ -156,13 +164,14 @@ public struct Trip: Codable, Hashable, Sendable, Identifiable {
     enum CodingKeys: String, CodingKey { case id, date, store, total, items, source, itemCount }
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
-        id = ((try? c.decodeIfPresent(String.self, forKey: .id)) ?? nil) ?? UUID().uuidString
+        id = c.lenient(String.self, .id) ?? UUID().uuidString
         date = try c.decode(Day.self, forKey: .date)
-        store = ((try? c.decodeIfPresent(String.self, forKey: .store)) ?? nil) ?? ""
-        total = (try? c.decodeIfPresent(Double.self, forKey: .total)) ?? nil
-        items = ((try? c.decodeIfPresent([TripLine].self, forKey: .items)) ?? nil) ?? []
-        source = ((try? c.decodeIfPresent(TripSource.self, forKey: .source)) ?? nil) ?? .receipt
-        itemCount = ((try? c.decodeIfPresent(Int.self, forKey: .itemCount)) ?? nil) ?? ((try? c.decodeIfPresent(Int.self, forKey: CodingKeys(stringValue: "items")!)) ?? nil)
+        store = c.lenient(String.self, .store) ?? ""
+        total = c.lenient(Double.self, .total)
+        items = c.lenient([TripLine].self, .items) ?? []
+        source = c.lenient(TripSource.self, .source) ?? .receipt
+        let count: Int? = c.lenient(Int.self, .itemCount)
+        itemCount = count ?? c.lenient(Int.self, .items)
     }
 
     public var displayTotal: Double? { total ?? (items.isEmpty ? nil : items.compactMap(\.price).reduce(0, +)) }
@@ -188,15 +197,15 @@ public struct AppSettings: Codable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey { case soonDays, budget, groupByStore, badge, shopDay, shopTime, reminderHour, notifications, autoProducts }
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
-        soonDays = ((try? c.decodeIfPresent(Int.self, forKey: .soonDays)) ?? nil) ?? 3
-        budget = (try? c.decodeIfPresent(Double.self, forKey: .budget)) ?? nil
-        groupByStore = ((try? c.decodeIfPresent(Bool.self, forKey: .groupByStore)) ?? nil) ?? false
-        badge = ((try? c.decodeIfPresent(Bool.self, forKey: .badge)) ?? nil) ?? false
-        shopDay = (try? c.decodeIfPresent(Int.self, forKey: .shopDay)) ?? nil
-        shopTime = (try? c.decodeIfPresent(String.self, forKey: .shopTime)) ?? nil
-        reminderHour = ((try? c.decodeIfPresent(Int.self, forKey: .reminderHour)) ?? nil) ?? 9
-        notifications = ((try? c.decodeIfPresent(Bool.self, forKey: .notifications)) ?? nil) ?? false
-        autoProducts = ((try? c.decodeIfPresent(Bool.self, forKey: .autoProducts)) ?? nil) ?? true
+        soonDays = c.lenient(Int.self, .soonDays) ?? 3
+        budget = c.lenient(Double.self, .budget)
+        groupByStore = c.lenient(Bool.self, .groupByStore) ?? false
+        badge = c.lenient(Bool.self, .badge) ?? false
+        shopDay = c.lenient(Int.self, .shopDay)
+        shopTime = c.lenient(String.self, .shopTime)
+        reminderHour = c.lenient(Int.self, .reminderHour) ?? 9
+        notifications = c.lenient(Bool.self, .notifications) ?? false
+        autoProducts = c.lenient(Bool.self, .autoProducts) ?? true
     }
 }
 
@@ -214,8 +223,8 @@ public struct AppData: Codable, Hashable, Sendable {
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
         items = try c.decode([Item].self, forKey: .items)
-        trips = ((try? c.decodeIfPresent([Trip].self, forKey: .trips)) ?? nil) ?? []
-        settings = ((try? c.decodeIfPresent(AppSettings.self, forKey: .settings)) ?? nil) ?? AppSettings()
+        trips = c.lenient([Trip].self, .trips) ?? []
+        settings = c.lenient(AppSettings.self, .settings) ?? AppSettings()
     }
 
     public static func decode(_ data: Data) throws -> AppData { try JSONDecoder().decode(AppData.self, from: data) }
