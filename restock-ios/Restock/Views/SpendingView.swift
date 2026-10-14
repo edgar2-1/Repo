@@ -24,8 +24,8 @@ struct SpendingView: View {
                             else { Text("spent so far").foregroundStyle(.secondary) }
                         }
                         if let budget = model.settings.budget, budget > 0 {
-                            let fraction = spent / budget
-                            ProgressView(value: min(1, fraction)).tint(fraction > 1 ? .red : fraction > 0.85 ? .orange : .accentColor)
+                            let fraction: Double = spent / budget
+                            ProgressView(value: min(1, fraction)).tint(meterColor(fraction))
                             Text(budgetLine(spent: spent, budget: budget, today: today)).font(.subheadline).foregroundStyle(.secondary)
                         } else {
                             HStack {
@@ -97,6 +97,12 @@ struct SpendingView: View {
             .navigationTitle("Spending")
             .navigationDestination(for: IDBox.self) { TripDetailView(tripID: $0.id) }
         }
+    }
+
+    private func meterColor(_ fraction: Double) -> Color {
+        if fraction > 1 { return .red }
+        if fraction > 0.85 { return .orange }
+        return .accentColor
     }
 
     private func budgetLine(spent: Double, budget: Double, today: Day) -> String {

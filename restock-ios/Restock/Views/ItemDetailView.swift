@@ -36,12 +36,12 @@ struct ItemDetailView: View {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.name).font(.title2.bold())
-                    Text([item.category, AppData.usualStore(item).map { "usually \($0)" }].compactMap { $0 }.joined(separator: " · "))
+                    Text(AppData.usualStore(item).map { "\(item.category) · usually \($0)" } ?? item.category)
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 StockPicker(item: item, prediction: p)
                 HStack {
-                    fact(p.interval.map { "\(Int($0.rounded())) d" } ?? "—", p.source == .set ? "set by you" : p.learned != nil ? "between buys" : "needs 2 buys")
+                    fact(intervalText(p), intervalLabel(p))
                     Divider()
                     fact(dueText(p), "next due")
                     Divider()
@@ -161,6 +161,16 @@ struct ItemDetailView: View {
             Text(label).font(.caption2).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func intervalText(_ p: Prediction) -> String {
+        guard let interval = p.interval else { return "—" }
+        return "\(Int(interval.rounded())) d"
+    }
+
+    private func intervalLabel(_ p: Prediction) -> String {
+        if p.source == .set { return "set by you" }
+        return p.learned != nil ? "between buys" : "needs 2 buys"
     }
 
     private func dueText(_ p: Prediction) -> String {

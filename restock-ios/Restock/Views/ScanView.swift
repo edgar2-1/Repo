@@ -250,7 +250,7 @@ struct TripDetailView: View {
                     ProductThumb(product: product)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(product.name).lineLimit(2)
-                        Text([product.brand, product.nutrition.kcal.map { "\(Int($0.rounded())) kcal/100 g" }, product.confirmed ? nil : "suggested"].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+                        Text(productDetail(product))
                             .font(.footnote).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 8)
@@ -277,6 +277,14 @@ struct TripDetailView: View {
         }
         .buttonStyle(.plain)
         .disabled(item == nil)
+    }
+
+    private func productDetail(_ product: Product) -> String {
+        var parts: [String] = []
+        if !product.brand.isEmpty { parts.append(product.brand) }
+        if let kcal = product.nutrition.kcal { parts.append("\(Int(kcal.rounded())) kcal/100 g") }
+        if !product.confirmed { parts.append("suggested") }
+        return parts.joined(separator: " · ")
     }
 
     private func status(_ item: Item?) -> String {

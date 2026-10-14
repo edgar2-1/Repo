@@ -63,13 +63,17 @@ struct ItemRow: View {
     private func subtitle(_ p: Prediction) -> String {
         switch mode {
         case .list:
-            let est = AppData.estimatedLine(item).map { "≈ " + money($0) }
-            let parts = [item.notes, AppData.usualStore(item), est].compactMap { $0 }.filter { !$0.isEmpty }
+            let est: String? = AppData.estimatedLine(item).map { "≈ " + money($0) }
+            let candidates: [String?] = [item.notes, AppData.usualStore(item), est]
+            let parts: [String] = candidates.compactMap { $0 }.filter { !$0.isEmpty }
             return parts.isEmpty ? item.category : parts.joined(separator: " · ")
         case .pantry:
-            let grade = item.product.flatMap { $0.grade.isEmpty ? nil : "Nutri-Score " + $0.grade.uppercased() }
-            return [Predictor.everyText(p.interval), p.last.map { "last " + $0.short } ?? "never bought", grade, item.notes]
-                .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+            var grade: String? = nil
+            if let g = item.product?.grade, !g.isEmpty { grade = "Nutri-Score " + g.uppercased() }
+            let last: String = p.last.map { "last " + $0.short } ?? "never bought"
+            let candidates: [String?] = [Predictor.everyText(p.interval), last, grade, item.notes]
+            let parts: [String] = candidates.compactMap { $0 }.filter { !$0.isEmpty }
+            return parts.joined(separator: " · ")
         case .cart:
             return ""
         }
